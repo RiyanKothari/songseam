@@ -348,3 +348,48 @@ html.tv .stage-btn { font-size: 18px; padding: 12px 20px; }
   .app { background: var(--bg); }
 }
 @media (max-width: 900px) { .stage-hint { display: none; } }
+
+/* ---------------- Phones & installed app ---------------- */
+.install-help {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 80; width: 260px;
+  padding: 14px 16px; border-radius: 14px; font-size: 13px; line-height: 1.5;
+  background: #15151c; border: 1px solid var(--line); box-shadow: 0 18px 50px rgb(0 0 0 / 0.6);
+}
+.install-help ol { margin: 8px 0 6px; padding-left: 18px; list-style: decimal; }
+
+/* Never let lyrics outgrow a narrow screen. */
+.lyr-line.lyr-cur { font-size: min(var(--lyr-size), 9.5vw); }
+.lyr-prev, .lyr-next { font-size: min(calc(var(--lyr-size) * 0.5), 5vw); }
+
+/* Notch / home-indicator safe areas (installed app runs edge to edge). */
+.topbar { padding-top: max(14px, env(safe-area-inset-top)); padding-left: max(22px, env(safe-area-inset-left)); padding-right: max(22px, env(safe-area-inset-right)); }
+.stage-controls { top: max(3.5vh, env(safe-area-inset-top)); right: max(3vw, env(safe-area-inset-right)); }
+
+@media (max-width: 640px) {
+  .topbar { flex-wrap: wrap; gap: 10px; padding-left: max(14px, env(safe-area-inset-left)); padding-right: max(14px, env(safe-area-inset-right)); }
+  .topbar > div:last-child { flex-wrap: wrap; justify-content: flex-end; }
+  .layout { padding: 12px 12px max(24px, env(safe-area-inset-bottom)); gap: 14px; }
+  .card { padding: 14px; border-radius: 16px; }
+  .now { gap: 14px; }
+  .now-art { width: 92px; height: 92px; }
+  .now-title { font-size: 18px; }
+  .row { grid-template-columns: 92px 1fr 64px; gap: 10px; font-size: 13px; }
+  .seg { flex-wrap: wrap; }
+  .seg button { flex: 1 1 40%; }
+  .tabs button { padding: 10px 6px; font-size: 13px; }
+  .mood-grid { grid-template-columns: 1fr 1fr; }
+  .set-meta > span:first-child { display: none; }
+  .set-trans { grid-template-columns: auto 1fr; margin-left: 12px; }
+  .set-trans .trans-time { grid-column: 1 / -1; }
+  .stage-body { padding: max(8vh, env(safe-area-inset-top)) 6vw max(6vh, env(safe-area-inset-bottom)); gap: 4vh; }
+  .stage-lyrics-full .lyr-stage { padding: 0 6vw; }
+  .stage-btn { padding: 8px 12px; }
+  /* Bigger touch targets for sliders. */
+  input[type='range'] { height: 28px; }
+}
+@media (max-width: 860px) {
+  /* Let the page grow and scroll instead of squeezing sections into one screen height. */
+  html, body, #root { height: auto; min-height: 100%; }
+  .app { height: auto; min-height: 100vh; min-height: 100dvh; }
+  .layout { flex: none; overflow: visible; grid-template-rows: auto auto; }
+}

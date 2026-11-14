@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import './index.css';
 import App from './App.tsx';
 import { Overlay } from './Overlay.tsx';
-import { windowLabel, log } from './services/platform';
+import { windowLabel, log, isDesktop } from './services/platform';
 
 // One-time move of saved settings/login from the app's old name.
 try {
@@ -16,6 +16,11 @@ try {
   }
 } catch {
   /* storage blocked: nothing to move */
+}
+
+// Installable web app: register the service worker (browser builds only).
+if (!isDesktop && import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => void navigator.serviceWorker.register('/sw.js').catch(() => {}));
 }
 
 windowLabel().then((label) => {

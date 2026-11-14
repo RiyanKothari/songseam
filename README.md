@@ -38,6 +38,15 @@ npm run desktop:build  # → src-tauri/target/release/bundle/{nsis,msi}
 
 Closing the window keeps SongSeam in the system tray (glow toggle, stage mode, quit).
 
+### On your phone
+
+SongSeam installs as an app from the browser (no app store):
+
+- **Android (Chrome):** open the live web app and tap **⤓ Install app** (or ⋮ → *Install app*).
+- **iPhone / iPad (Safari):** tap **Share → Add to Home Screen**. The app's **⤓ Install app** button shows these steps.
+
+It opens full screen from its own icon and keeps the screen awake in Stage. Phones don't let apps listen to Spotify's audio or draw over other apps, so on a phone the glow lives inside SongSeam and follows the album colours rather than the beat.
+
 ### Stage, Blackout and TVs
 
 **Stage** is full-screen: big album art and lyrics. **Blackout** (OK / Enter / B, or the Lyrics tab) turns everything black except the edge glow and the lyrics.

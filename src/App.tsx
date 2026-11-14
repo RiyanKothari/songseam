@@ -7,6 +7,7 @@ import { Lyrics } from './components/Lyrics';
 import { GlowControls, LyricsControls } from './components/Controls';
 import { DjPanel } from './components/DjPanel';
 import { Stage } from './components/Stage';
+import { InstallButton } from './components/InstallButton';
 import { Overlay, isDesktop, isTV, on } from './services/platform';
 import * as Spotify from './services/spotify';
 import type { NowInfo } from './dj/runner';
@@ -30,7 +31,7 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('glow');
   const [overlayOn, setOverlayOn] = useState(false);
   // TVs open straight into full-screen Stage; Back returns to the panel.
-  const [stage, setStage] = useState(isTV);
+  const [stage, setStage] = useState(() => isTV || new URLSearchParams(window.location.search).has('stage'));
   useEffect(() => {
     if (isTV) document.documentElement.classList.add('tv');
   }, []);
@@ -123,6 +124,7 @@ export default function App() {
               {overlayOn ? 'Screen glow: on' : 'Screen glow: off'}
             </button>
           )}
+          <InstallButton />
           <button className="btn" onClick={() => setStage(true)}>
             ⛶ Stage
           </button>
