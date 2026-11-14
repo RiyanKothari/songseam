@@ -2,6 +2,8 @@
 
 Album-colour edge lighting, word-by-word lyrics and a mood DJ for Spotify — built for Windows.
 
+**Live web app:** https://afterglow-three-kappa.vercel.app
+
 - **Screen glow** – a bright gradient band around the whole display in the colours of the current album art. It spins, swells with the bass and flashes on beats, driven by the sound your PC is actually playing (WASAPI loopback, never the microphone).
 - **Lyrics on screen** – word-by-word synced lyrics over everything (click-through), or full-screen in **Stage** mode with a blurred album backdrop.
 - **Mood DJ** – picks a mood, builds a set from your Liked Songs and playlists, orders it by energy arc, tempo and harmonic key (Camelot wheel), and finds cue points from each song's vocals (cuts long outros, skips long intros on upbeat sets). While playing, the engine listens to each song and mixes out on the beat when it hears the outro start. **Save to Spotify** writes the set as a playlist so Spotify's own *Mix* can do overlapping, EQ'd DJ transitions.
