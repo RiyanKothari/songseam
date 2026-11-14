@@ -26,6 +26,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     showNext: true,
     backdrop: true,
   },
+  blackout: false,
 };
 
 export function loadSettings(): AppSettings {
@@ -36,6 +37,7 @@ export function loadSettings(): AppSettings {
     return {
       glow: { ...DEFAULT_SETTINGS.glow, ...(s.glow ?? {}) },
       lyrics: { ...DEFAULT_SETTINGS.lyrics, ...(s.lyrics ?? {}) },
+      blackout: s.blackout ?? DEFAULT_SETTINGS.blackout,
     };
   } catch {
     return DEFAULT_SETTINGS;

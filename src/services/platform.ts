@@ -4,6 +4,15 @@ import { listen, emit, type UnlistenFn } from '@tauri-apps/api/event';
 /** True inside the Windows desktop app (Tauri), false in a normal browser tab. */
 export const isDesktop = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
+/**
+ * Smart TV / TV stick browsers (Samsung Tizen, LG webOS, Android/Google TV,
+ * Fire TV, Sony, Hisense, Roku, Chromecast) — or any browser opened with ?tv.
+ */
+export const isTV =
+  typeof window !== 'undefined' &&
+  (/SMART-TV|SmartTV|Tizen|Web0S|webOS|NetCast|BRAVIA|AFT[A-Z]|CrKey|GoogleTV|Android TV|HbbTV|VIDAA|Roku|AppleTV/i.test(navigator.userAgent) ||
+    new URLSearchParams(window.location.search).has('tv'));
+
 /** Label of the current desktop window ("main" or "overlay"); "web" in a browser. */
 export async function windowLabel(): Promise<string> {
   if (!isDesktop) return 'web';

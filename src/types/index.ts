@@ -86,4 +86,6 @@ export interface LyricsSettings {
 export interface AppSettings {
   glow: GlowSettings;
   lyrics: LyricsSettings;
+  /** Stage shows only the edge glow and lyrics on pure black. */
+  blackout: boolean;
 }

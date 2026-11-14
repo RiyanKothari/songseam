@@ -138,6 +138,12 @@ export function LyricsControls({ settings, update, desktop }: { settings: AppSet
         fmt={(v) => (v === 0 ? 'in sync' : `${v > 0 ? 'later' : 'earlier'} ${Math.abs(v) / 1000}s`)}
       />
       <Toggle label="Show next line" checked={l.showNext} onChange={(showNext) => set({ showNext })} />
+      <Toggle
+        label="Blackout in Stage"
+        hint="Stage shows only the edge glow and lyrics on pure black. Toggle live with OK / Enter / B."
+        checked={settings.blackout}
+        onChange={(blackout) => update((s) => ({ ...s, blackout }))}
+      />
       {desktop && <Toggle label="Shadow behind text" hint="Keeps lyrics readable over bright windows" checked={l.backdrop} onChange={(backdrop) => set({ backdrop })} />}
     </div>
   );

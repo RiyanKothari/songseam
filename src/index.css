@@ -183,8 +183,6 @@ html.is-overlay, html.is-overlay body { background: transparent !important; }
 .stage-art { position: absolute; inset: -12%; background-size: cover; background-position: center; filter: blur(70px) saturate(1.6); opacity: 0.55; transform: scale(1.1); transition: background-image 1s ease; }
 .stage-shade { position: absolute; inset: 0; background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.75)); }
 .stage-clock { position: absolute; top: 5vh; left: 0; right: 0; text-align: center; font-family: var(--font-lyrics); font-weight: 600; font-size: 22px; opacity: 0.6; z-index: 35; }
-.stage-exit { position: absolute; top: 4vh; right: 4vw; z-index: 60; font-size: 12px; padding: 6px 12px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); color: var(--muted); opacity: 0; transition: opacity 0.3s; }
-.stage:hover .stage-exit { opacity: 1; }
 /* Big artwork on the left, lyrics filling the right. */
 .stage-body { position: absolute; inset: 0; z-index: 35; display: grid; grid-template-columns: auto 1fr; grid-template-rows: 100%; align-items: center; gap: 5vw; padding: 10vh 6vw; }
 .stage-cover { display: flex; flex-direction: column; gap: 22px; width: min(48vh, 34vw); }
@@ -312,3 +310,41 @@ input[type='range'] { accent-color: var(--accent); }
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.12); border-radius: 8px; }
 button { cursor: pointer; }
+
+/* ---------------- Stage controls, blackout, TV ---------------- */
+.stage { cursor: default; }
+.stage-idle { cursor: none; }
+.stage-controls {
+  position: absolute; top: 3.5vh; right: 3vw; z-index: 60;
+  display: flex; align-items: center; gap: 10px;
+  transition: opacity 0.4s ease;
+}
+.stage-idle .stage-controls { opacity: 0; pointer-events: none; }
+.stage-btn { font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 999px; background: rgb(255 255 255 / 0.1); color: #fff; border: 1px solid rgb(255 255 255 / 0.12); }
+.stage-btn:hover { background: rgb(255 255 255 / 0.18); }
+.stage-btn-on { background: var(--stage-on, #fff); color: #000; }
+.stage-hint { font-size: 12px; color: rgb(255 255 255 / 0.45); }
+.stage-blackout { background: #000 !important; }
+.stage-lyrics-full { position: absolute; inset: 0; z-index: 35; }
+.stage-lyrics-full .lyr-stage { position: absolute; inset: 0; padding: 0 10vw; }
+
+/* Remote-control friendly focus rings (TVs navigate with arrows). */
+:focus-visible { outline: 3px solid #fff; outline-offset: 3px; border-radius: 10px; }
+
+/* TV: everything a bit bigger for viewing from the sofa; no hover-only UI. */
+html.tv { font-size: 125%; }
+html.tv .app { zoom: 1.25; }
+html.tv .stage-hint { font-size: 16px; }
+html.tv .stage-btn { font-size: 18px; padding: 12px 20px; }
+
+/* Older TV browsers (Chromium < 111: many 2020–2023 TVs) lack color-mix();
+   give them plain album-colour versions of the same effects. */
+@supports not (color: color-mix(in srgb, red 50%, blue)) {
+  .lyr-word { --fill: linear-gradient(90deg, #fff, var(--lyr-glow)); }
+  .lyr-cur::before { background: radial-gradient(ellipse closest-side, var(--lyr-glow), transparent); opacity: calc(0.2 + var(--lp) * 0.3); }
+  .lyr-style-sweep .lyr-word[data-s='past'], .lyr-style-pop .lyr-word[data-s='past'], .lyr-style-line .lyr-word { filter: drop-shadow(0 0 0.18em var(--lyr-glow)); }
+  .btn-primary, .now-art, .brand-mark { box-shadow: none; }
+  .chip-on, .mood-on, .set-track-now { background: rgb(255 255 255 / 0.12); }
+  .app { background: var(--bg); }
+}
+@media (max-width: 900px) { .stage-hint { display: none; } }

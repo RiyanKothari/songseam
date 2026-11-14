@@ -36,6 +36,14 @@ npm run desktop:build  # → src-tauri/target/release/bundle/{nsis,msi}
 
 Closing the window keeps SongSeam in the system tray (glow toggle, stage mode, quit).
 
+### Stage, Blackout and TVs
+
+**Stage** is full-screen: big album art and lyrics. **Blackout** (OK / Enter / B, or the Lyrics tab) turns everything black except the edge glow and the lyrics.
+
+On a smart TV (Samsung, LG, Android/Google TV, Fire TV …) open the web app in the TV browser. It starts in Stage with a bigger layout, keeps the screen awake, and works with the remote: **OK** blackout · **◀ ▶** previous/next · **▲ ▼** text size · **Back** to the menu. Add `?tv` to the URL to force TV mode in any browser.
+
+
+
 ## Mood DJ setup
 
 Spotify requires each user of a development app to bring their own app:

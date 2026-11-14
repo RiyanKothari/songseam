@@ -7,7 +7,7 @@ import { Lyrics } from './components/Lyrics';
 import { GlowControls, LyricsControls } from './components/Controls';
 import { DjPanel } from './components/DjPanel';
 import { Stage } from './components/Stage';
-import { Overlay, isDesktop, on } from './services/platform';
+import { Overlay, isDesktop, isTV, on } from './services/platform';
 import * as Spotify from './services/spotify';
 import type { NowInfo } from './dj/runner';
 
@@ -29,7 +29,11 @@ export default function App() {
   const levels = useAudioLevels();
   const [tab, setTab] = useState<Tab>('glow');
   const [overlayOn, setOverlayOn] = useState(false);
-  const [stage, setStage] = useState(false);
+  // TVs open straight into full-screen Stage; Back returns to the panel.
+  const [stage, setStage] = useState(isTV);
+  useEffect(() => {
+    if (isTV) document.documentElement.classList.add('tv');
+  }, []);
   const pbRef = useRef(pb);
   pbRef.current = pb;
 
@@ -87,7 +91,7 @@ export default function App() {
   const art = pb.track?.album.images[0]?.url;
   const dur = pb.track?.duration_ms ?? 0;
 
-  if (stage) return <Stage pb={pb} settings={settings} levels={levels} onExit={exitStage} />;
+  if (stage) return <Stage pb={pb} settings={settings} update={update} levels={levels} onExit={exitStage} />;
 
   return (
     <div className="app" style={{ '--surface': pb.palette.surface, '--accent': pb.palette.primary, '--accent2': pb.palette.secondary } as React.CSSProperties}>
