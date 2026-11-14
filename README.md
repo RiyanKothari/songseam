@@ -1,4 +1,4 @@
-# Afterglow
+# SongSeam
 
 Album-colour edge lighting, word-by-word lyrics and a mood DJ for Spotify — built for Windows.
 
@@ -34,7 +34,7 @@ In a browser the glow stays inside the page and can't react to Spotify's sound (
 npm run desktop:build  # → src-tauri/target/release/bundle/{nsis,msi}
 ```
 
-Closing the window keeps Afterglow in the system tray (glow toggle, stage mode, quit).
+Closing the window keeps SongSeam in the system tray (glow toggle, stage mode, quit).
 
 ## Mood DJ setup
 
@@ -48,7 +48,7 @@ Limits set by Spotify (2026): the app owner needs Premium, controlling playback 
 
 ## How the DJ stays within Spotify's rules
 
-Spotify's developer policy forbids mixing or overlapping Spotify audio. Afterglow never does: each transition fades the outgoing track down (Windows per-app volume when Spotify plays on this PC, Spotify's volume API otherwise), moves to the next track, and fades it up. Tempo, key and energy come from [ReccoBeats](https://reccobeats.com) because Spotify no longer serves audio features to new apps.
+Spotify's developer policy forbids mixing or overlapping Spotify audio. SongSeam never does: each transition fades the outgoing track down (Windows per-app volume when Spotify plays on this PC, Spotify's volume API otherwise), moves to the next track, and fades it up. Tempo, key and energy come from [ReccoBeats](https://reccobeats.com) because Spotify no longer serves audio features to new apps.
 
 ## Layout
 

@@ -1,6 +1,6 @@
 import type { LyricLine, SpotifyTrack, SyncedLyrics } from '../types';
 
-/** Original demo song (words and "art" written for Afterglow) for the browser preview. */
+/** Original demo song (words and "art" written for SongSeam) for the browser preview. */
 
 const LINES: [number, string][] = [
   [2000, 'City lights are humming low'],
@@ -8,11 +8,11 @@ const LINES: [number, string][] = [
   [10000, 'Turn it up and let it show'],
   [14000, "We're the colour of the radio"],
   [19000, 'Hold the moment, keep it slow'],
-  [23000, "Paint the dark in afterglow"],
-  [28000, 'Afterglow, afterglow'],
+  [23000, 'Stitch the dark in neon glow'],
+  [28000, 'Let it glow, let it glow'],
   [32000, 'Light the edges, let it flow'],
   [37000, 'Every heartbeat, every echo'],
-  [41000, 'Burning bright in afterglow'],
+  [41000, 'Every seam begins to glow'],
 ];
 
 function timed(start: number, text: string, durMs: number): LyricLine {
@@ -33,8 +33,8 @@ function timed(start: number, text: string, durMs: number): LyricLine {
 }
 
 export const DEMO_LYRICS: SyncedLyrics = {
-  trackName: 'Afterglow (demo)',
-  artistName: 'Afterglow',
+  trackName: 'SongSeam (demo)',
+  artistName: 'SongSeam',
   instrumental: false,
   hasWordSync: true,
   sync: 'word',
@@ -49,8 +49,8 @@ const ART =
 
 export const DEMO_TRACK: SpotifyTrack = {
   id: 'demo',
-  name: 'Afterglow (demo)',
-  artists: [{ name: 'Afterglow' }],
+  name: 'SongSeam (demo)',
+  artists: [{ name: 'SongSeam' }],
   album: { name: 'Demo', images: [{ url: ART }] },
   duration_ms: 46000,
   progress_ms: 0,

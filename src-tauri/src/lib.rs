@@ -21,7 +21,7 @@ pub fn run() {
       Ok(())
     })
     .on_window_event(|window, event| {
-      // Closing the panel keeps Afterglow running in the tray.
+      // Closing the panel keeps SongSeam running in the tray.
       if let tauri::WindowEvent::CloseRequested { api, .. } = event {
         if window.label() == "main" {
           api.prevent_close();

@@ -13,9 +13,9 @@ import type { SpotifyTrack } from '../types';
  */
 
 const API = 'https://api.spotify.com/v1';
-const TOKEN_KEY = 'afterglow.spotify.token';
-const CLIENT_KEY = 'afterglow.spotify.clientId';
-const PKCE_KEY = 'afterglow.spotify.pkce';
+const TOKEN_KEY = 'songseam.spotify.token';
+const CLIENT_KEY = 'songseam.spotify.clientId';
+const PKCE_KEY = 'songseam.spotify.pkce';
 export const DESKTOP_PORT = 43821;
 
 const SCOPES = [

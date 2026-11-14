@@ -15,7 +15,7 @@ export interface AudioFeatures {
   instrumentalness: number; // 0-1
 }
 
-const CACHE_KEY = 'afterglow.features.v1';
+const CACHE_KEY = 'songseam.features.v1';
 const BATCH = 40;
 const MISSING = 0;
 

@@ -18,8 +18,8 @@ const fmt = (ms: number) => {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 };
 
-const WEB_SOURCE_KEY = 'afterglow.webSource';
-const OVERLAY_KEY = 'afterglow.overlay';
+const WEB_SOURCE_KEY = 'songseam.webSource';
+const OVERLAY_KEY = 'songseam.overlay';
 
 export default function App() {
   const [webSource, setWebSource] = useState<Source>(() => (localStorage.getItem(WEB_SOURCE_KEY) as Source) || 'demo');
@@ -94,7 +94,7 @@ export default function App() {
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark" />
-          Afterglow
+          SongSeam
         </div>
         <div className="flex items-center gap-2">
           {!isDesktop && (

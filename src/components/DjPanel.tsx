@@ -133,8 +133,8 @@ export function DjPanel({ palette, getNow }: Props) {
     try {
       const date = new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
       const url = await Spotify.savePlaylist(
-        `Afterglow · ${MOODS[p.mood].label} set · ${date}`,
-        `${p.tracks.length} tracks ordered by energy, tempo and key by Afterglow. Tap Mix → Auto in Spotify for DJ transitions.`,
+        `SongSeam · ${MOODS[p.mood].label} set · ${date}`,
+        `${p.tracks.length} tracks ordered by energy, tempo and key by SongSeam. Tap Mix → Auto in Spotify for DJ transitions.`,
         p.tracks.map((t) => t.uri),
       );
       setSaved({ url });

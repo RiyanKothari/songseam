@@ -1,5 +1,5 @@
 [package]
-name = "afterglow"
+name = "songseam"
 version = "0.1.0"
 description = "Album-colour edge lighting, live lyrics and a mood DJ for Spotify on Windows"
 authors = []

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { AppSettings } from '../types';
 import { broadcast, on } from '../services/platform';
 
-const KEY = 'afterglow.settings.v1';
+const KEY = 'songseam.settings.v1';
 const EVENT = 'settings-changed';
 
 export const DEFAULT_SETTINGS: AppSettings = {

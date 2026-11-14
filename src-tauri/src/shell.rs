@@ -37,7 +37,7 @@ pub fn set_overlay(app: &AppHandle, visible: bool) -> tauri::Result<()> {
             None => ((0.0, 0.0), (1920.0, 1080.0)),
         };
         let w = WebviewWindowBuilder::new(app, OVERLAY, WebviewUrl::App("index.html".into()))
-            .title("Afterglow overlay")
+            .title("SongSeam overlay")
             .position(pos.0, pos.1)
             .inner_size(size.0, size.1)
             .transparent(true)
@@ -68,7 +68,7 @@ fn show_main(app: &AppHandle) {
 }
 
 pub fn build_tray(app: &AppHandle) -> tauri::Result<()> {
-    let open = MenuItem::with_id(app, "open", "Open Afterglow", true, None::<&str>)?;
+    let open = MenuItem::with_id(app, "open", "Open SongSeam", true, None::<&str>)?;
     let overlay = MenuItem::with_id(app, "overlay", "Toggle screen glow + lyrics", true, None::<&str>)?;
     let stage = MenuItem::with_id(app, "stage", "Full-screen stage", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
@@ -76,7 +76,7 @@ pub fn build_tray(app: &AppHandle) -> tauri::Result<()> {
     let menu = Menu::with_items(app, &[&open, &overlay, &stage, &sep, &quit])?;
 
     let mut builder = TrayIconBuilder::with_id("main-tray")
-        .tooltip("Afterglow")
+        .tooltip("SongSeam")
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id().as_ref() {
@@ -220,9 +220,9 @@ pub async fn spotify_login(app: AppHandle, url: String, port: u16) -> Result<OAu
                         state: query_param(query, "state"),
                         error: query_param(query, "error"),
                     };
-                    let body = "<!doctype html><meta charset=utf-8><title>Afterglow</title>\
+                    let body = "<!doctype html><meta charset=utf-8><title>SongSeam</title>\
                         <body style=\"background:#0b0b10;color:#fff;font:16px system-ui;display:grid;place-items:center;height:100vh;margin:0\">\
-                        <div style=\"text-align:center\"><h2>Connected to Afterglow</h2><p>You can close this tab.</p></div>";
+                        <div style=\"text-align:center\"><h2>Connected to SongSeam</h2><p>You can close this tab.</p></div>";
                     let resp = format!(
                         "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
                         body.len(),
