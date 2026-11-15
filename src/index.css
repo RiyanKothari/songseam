@@ -408,15 +408,17 @@ html.tv .stage-btn { font-size: 18px; padding: 12px 20px; }
 .lyr-k {
   --kb: min(calc(var(--lyr-size) * 2.1), 10.5vw, 13vh);
   --kb: min(calc(var(--lyr-size) * 2.1), 11.6cqw, 13vh);
-  font-size: calc(var(--kb) * var(--ks, 1));
-  width: min(8.6em, 100%);
+  /* --ks: layout's own scale; --fit: measured on screen so nothing is ever cut off. */
+  font-size: calc(var(--kb) * var(--ks, 1) * var(--fit, 1));
+  width: max-content;
   display: flex;
   flex-direction: column;
   font-weight: 800;
-  line-height: 0.92;
-  letter-spacing: -0.035em;
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+  isolation: isolate; /* highlight boxes stay behind every word */
 }
-.lyr-k-row { display: flex; align-items: center; column-gap: 0.22em; translate: var(--shift, 0) 0; }
+.lyr-k-row { display: flex; align-items: center; column-gap: 0.24em; translate: var(--shift, 0) 0; }
 .lyr-k-start { justify-content: flex-start; }
 .lyr-k-center { justify-content: center; }
 .lyr-k-end { justify-content: flex-end; }
@@ -427,52 +429,88 @@ html.tv .stage-btn { font-size: 18px; padding: 12px 20px; }
   align-items: center;
   font-size: calc(var(--sz, 1) * 1em);
   white-space: nowrap;
+  padding: 0 0.04em; /* room for italics-ish overhangs and glow */
   transform: rotate(var(--rot, 0deg));
   transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.12s linear, filter 0.2s ease;
-  /* The whole line flies in together (quick stagger), readable before it's sung. */
-  animation: lyr-k-in 0.34s cubic-bezier(0.34, 1.4, 0.64, 1) both;
-  animation-delay: calc(min(var(--k, 0), 8) * 28ms);
+  /* Entrance: the whole line flies in with a quick stagger. Driven by --age
+     (ms since the line appeared, set every frame), not a CSS animation, so a
+     paused animation clock can never leave words invisible. */
+  --t: clamp(0, (var(--age, 1500) - min(var(--k, 0), 8) * 28) / 320, 1);
+  --e: calc(var(--t) * (2 - var(--t))); /* ease-out */
+  translate: calc((1 - var(--e)) * var(--fx, 0) * 0.6em) calc((1 - var(--e)) * var(--fy, 0) * 0.6em);
+  scale: calc(0.6 + 0.4 * var(--e));
 }
-/* Not sung yet: visible but dim, so you can read ahead. */
-.lyr-kw[data-s='future'] { opacity: 0.32; transform: rotate(var(--rot, 0deg)) scale(0.96); }
+.lyr-kw > * { opacity: var(--t); }
+/* Not sung yet: visible but softer, so you can read ahead. */
+.lyr-kw[data-s='future'] { opacity: 0.45; transform: rotate(var(--rot, 0deg)) scale(0.96); }
 /* Being sung: full colour, a pop and a glow — this is what tracks the voice. */
 .lyr-kw[data-s='now'] {
   opacity: 1;
   transform: scale(1.08) rotate(var(--rot, 0deg));
-  filter: drop-shadow(0 0 0.1em var(--lyr-glow)) drop-shadow(0 0 0.35em var(--lyr-glow));
+  filter: drop-shadow(0 0 0.08em var(--lyr-glow)) drop-shadow(0 0 0.3em var(--lyr-glow));
 }
 .lyr-kw[data-s='past'] { opacity: 1; }
-@keyframes lyr-k-in { from { opacity: 0; translate: calc(var(--fx, 0) * 0.6em) calc(var(--fy, 0) * 0.6em); scale: 0.55; } }
-.lyr-ktuck { align-self: center; }
-.lyr-kt-dim { color: color-mix(in srgb, var(--lyr-glow) 80%, #000); }
-.lyr-kt-hot { color: color-mix(in srgb, var(--lyr-glow) 88%, #fff); }
-.lyr-kt-light { color: color-mix(in srgb, var(--lyr-glow) 22%, #fff); }
-.lyr-kt-alt { color: color-mix(in srgb, var(--lyr-glow2) 40%, #fff); }
-/* The box wipes in behind the word as it's sung, sitting a little high so the letters spill out below. */
-.lyr-kbox {
-  padding: 0 0.1em;
-  background: linear-gradient(color-mix(in srgb, var(--lyr-glow) 48%, #000), color-mix(in srgb, var(--lyr-glow) 48%, #000)) no-repeat 0 0 / calc(var(--p, 0) * 100%) 80%;
+
+/* Colours, all from the album: the hero word is a gradient of its two main
+   colours, others alternate light tints of the three, filler stays readable. */
+.lyr-kt-hot .lyr-kt {
+  background: linear-gradient(100deg, color-mix(in srgb, var(--lyr-glow) 78%, #fff), color-mix(in srgb, var(--lyr-glow2) 70%, #fff));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
+.lyr-kt-light { color: color-mix(in srgb, var(--lyr-glow) 14%, #fff); }
+.lyr-kt-alt { color: color-mix(in srgb, var(--lyr-glow2) 50%, #fff); }
+.lyr-kt-alt2 { color: color-mix(in srgb, var(--lyr-glow3) 50%, #fff); }
+.lyr-kt-dim { color: color-mix(in srgb, var(--lyr-glow) 35%, #fff); opacity: 0.82; }
+.lyr-kw.lyr-kt-dim[data-s='future'] { opacity: 0.4; }
+
+/* Highlight box: a slanted album-colour slab that wipes in as the word is
+   sung. It sits behind all text (never covers letters of nearby rows). */
+.lyr-kbox { color: #fff; }
+.lyr-kbox::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0.1em -0.12em 0.04em -0.12em;
+  border-radius: 0.06em;
+  transform: skewX(-8deg) scaleX(var(--bp, 0));
+  transform-origin: left center;
+  background: linear-gradient(100deg, color-mix(in srgb, var(--lyr-glow) 70%, #000), color-mix(in srgb, var(--lyr-glow2) 60%, #000));
+  box-shadow: 0 0 0.35em color-mix(in srgb, var(--lyr-glow) 45%, transparent);
+}
+
+/* Emoji: a sticker beside its word — same size on every word, tilted, outlined,
+   and it pops when its word is sung. */
 .lyr-kemoji {
   display: inline-block;
-  margin-left: 0.18em;
-  font-size: 1em;
+  margin-left: 0.14em;
+  font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
+  font-weight: 400;
+  font-size: calc(0.82em / var(--sz, 1));
+  line-height: 1;
   letter-spacing: 0;
-  animation: lyr-k-wob 2.6s ease-in-out infinite;
+  translate: 0 -0.28em;
+  rotate: -10deg;
+  filter: drop-shadow(0 0 0.03em #fff) drop-shadow(0 0 0.03em #fff) drop-shadow(0 0.08em 0.12em rgb(0 0 0 / 0.45));
+  animation: lyr-k-wob 2.8s ease-in-out infinite;
 }
+.lyr-kw[data-s='now'] .lyr-kemoji { animation: lyr-k-pop 0.5s cubic-bezier(0.34, 1.8, 0.64, 1) both, lyr-k-wob 2.8s ease-in-out 0.5s infinite; }
+@keyframes lyr-k-pop { from { scale: 0.3; } 60% { scale: 1.3; } to { scale: 1; } }
 .lyr-overlay .lyr-k { filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.9)); }
 .lyr-backdrop .lyr-k-wrap { background: radial-gradient(ellipse closest-side, rgb(0 0 0 / 0.42), rgb(0 0 0 / 0.2) 60%, transparent); }
 .lyr-style-kinetic .lyr-dots { font-size: min(var(--lyr-size), 9.5vw); }
-@keyframes lyr-k-wob { 0%, 100% { transform: rotate(-6deg) scale(1); } 50% { transform: rotate(6deg) scale(1.08); } }
+@keyframes lyr-k-wob { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(7deg) scale(1.06); } }
 @supports not (color: color-mix(in srgb, red 50%, blue)) {
-  .lyr-kt-dim { color: var(--lyr-glow); opacity: 0.7; }
-  .lyr-kt-hot { color: var(--lyr-glow); }
+  .lyr-kt-dim { color: #fff; opacity: 0.75; }
+  .lyr-kt-hot .lyr-kt { background: none; color: var(--lyr-glow); }
   .lyr-kt-light, .lyr-kt-alt { color: #fff; }
-  .lyr-kbox { background-image: linear-gradient(var(--lyr-glow), var(--lyr-glow)); }
+  .lyr-kt-alt2 { color: var(--lyr-glow2); }
+  .lyr-kbox::before { background: var(--lyr-glow); box-shadow: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .lyr-kw { transition: opacity 0.2s ease; }
-  .lyr-kw { animation: lyr-in 0.2s ease both; }
+  .lyr-kw { translate: none; scale: none; }
   .lyr-kw[data-s='future'] { transform: rotate(var(--rot, 0deg)); }
   .lyr-kemoji { animation: none; }
 }

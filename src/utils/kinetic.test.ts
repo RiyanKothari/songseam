@@ -56,6 +56,14 @@ test('emoji endings and long lines get up to two different emoji', () => {
   assert.notEqual(em[0].emoji, em[1].emoji);
 });
 
+test('rows hold at most 3 words and tucked words stay close to their row', () => {
+  const l = layoutLine(split("I'm dancing in the city lights till the sun comes up, baby, don't stop"));
+  for (const r of l.rows) {
+    assert.ok(r.words.filter((w) => !w.tuck).length <= 3);
+    for (const w of r.words) assert.ok(Math.abs(w.dy) <= 0.2);
+  }
+});
+
 test('empty line has no rows', () => {
   assert.deepEqual(layoutLine([]), { rows: [], scale: 1 });
 });

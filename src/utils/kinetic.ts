@@ -144,13 +144,18 @@ function rng(seed: string): () => number {
 
 /** Rough width of a word in em of the base size (bold display font). */
 export function widthOf(text: string, size: number): number {
-  return (text.length * 0.56 + 0.1) * size;
+  // Wide letters (m, w, capitals) at weight 800 run wider than average.
+  const wide = (text.match(/[mwMW@%]/g) ?? []).length * 0.28 + (text.match(/[A-Z]/g) ?? []).length * 0.08;
+  return (text.length * 0.6 + wide + 0.1) * size;
 }
 
-const MAX_W = 8; // row width budget, em of base size
-const MAX_H = 5; // block height budget, em of base size
+/** Room an emoji sticker takes beside its word, in em of the base size. */
+const EMOJI_W = 1.05;
+
+const MAX_W = 9; // row width budget, em of base size
+const MAX_H = 5.2; // block height budget, em of base size
 const MAX_UP = 1.5; // short lines may grow this much
-const LINE_H = 0.92;
+const LINE_H = 1.04; // rows never overlap (descenders stay visible)
 
 export function layoutLine(words: string[], opts: { emoji?: boolean } = {}): KLayout {
   const r = rng(words.join(' '));
@@ -200,9 +205,9 @@ export function layoutLine(words: string[], opts: { emoji?: boolean } = {}): KLa
 
   // Very long single words shrink to fit a row on their own.
   for (const w of out) {
-    const extra = w.emoji ? 1.3 * Math.min(1.4, w.size) : 0;
+    const extra = w.emoji ? EMOJI_W : 0;
     const width = widthOf(w.text, w.size) + extra;
-    if (width > MAX_W) w.size *= MAX_W / width;
+    if (width > MAX_W) w.size *= (MAX_W - extra) / widthOf(w.text, w.size);
   }
 
   // Pack into rows: at most 3 words, within the width budget. Short filler words
@@ -210,28 +215,34 @@ export function layoutLine(words: string[], opts: { emoji?: boolean } = {}): KLa
   const rows: KRow[] = [];
   let row: KWord[] = [];
   let rowW = 0;
+  // Rows zig-zag left / right around a centred hero row, like a lyric poster.
+  let side = r() < 0.5 ? 0 : 1;
   const flush = () => {
     if (!row.length) return;
-    const pick = r();
-    const justify = pick < 0.34 ? 'start' : pick < 0.67 ? 'end' : 'center';
-    // Offsets push rows inward, never past the block's edge.
-    const amt = r() * 1.1;
-    rows.push({ justify, shift: justify === 'start' ? amt : justify === 'end' ? -amt : (r() - 0.5) * 1.2, words: row });
+    const isHero = row.some((x) => x.size >= 1.6);
+    const justify: KRow['justify'] = isHero ? 'center' : side++ % 2 === 0 ? 'start' : 'end';
+    // Small inward nudge only, never past the block's edge.
+    const amt = r() * 0.5;
+    rows.push({ justify, shift: justify === 'start' ? amt : justify === 'end' ? -amt : 0, words: row });
     row = [];
     rowW = 0;
   };
   for (const w of out) {
     const prev = row[row.length - 1];
-    if (prev && w.tone === 'dim' && w.text.length <= 3 && prev.size >= 1.25 && !prev.tuck) {
+    if (prev && w.tone === 'dim' && w.text.length <= 3 && prev.size >= 1.4 && !prev.tuck) {
+      // Tucked filler sits beside the big word, a touch low: it never leaves its row.
       w.tuck = true;
       w.size = Math.min(w.size, 0.62);
-      w.dy = r() < 0.6 ? 0.55 : -0.7;
+      w.dy = 0.18;
     }
-    const width = widthOf(w.text, w.size) + 0.25 * w.size + (w.emoji ? 1.3 * Math.min(1.4, w.size) : 0);
+    const width = widthOf(w.text, w.size) + 0.25 * w.size + (w.emoji ? EMOJI_W : 0);
     const big = w.size >= 1.6;
-    // The hero word gets a row to itself (plus any tucked filler).
+    // The hero word gets a row to itself (plus any tucked filler); rows of
+    // ordinary words hold up to 3, or 2 when one of them is large.
     const rowHasBig = row.some((x) => x.size >= 1.6);
-    if (row.length && !w.tuck && (rowW + width > MAX_W || row.filter((x) => !x.tuck).length >= 2 || big || rowHasBig)) flush();
+    const words = row.filter((x) => !x.tuck);
+    const cap = words.some((x) => x.size >= 1.3) || w.size >= 1.3 ? 2 : 3;
+    if (row.length && !w.tuck && (rowW + width > MAX_W || words.length >= cap || big || rowHasBig)) flush();
     row.push(w);
     rowW += width;
   }
@@ -241,7 +252,7 @@ export function layoutLine(words: string[], opts: { emoji?: boolean } = {}): KLa
   let maxW = 0;
   let h = 0;
   for (const rw of rows) {
-    const w = rw.words.reduce((s, x) => s + widthOf(x.text, x.size) + 0.25 * x.size + (x.emoji ? 1.3 * Math.min(1.4, x.size) : 0), 0) + Math.abs(rw.shift);
+    const w = rw.words.reduce((s, x) => s + widthOf(x.text, x.size) + 0.25 * x.size + (x.emoji ? EMOJI_W : 0), 0) + Math.abs(rw.shift);
     maxW = Math.max(maxW, w);
     h += Math.max(...rw.words.filter((x) => !x.tuck).map((x) => x.size), 0.7) * LINE_H;
   }

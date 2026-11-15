@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ColorPalette, LyricLine, LyricsSettings, SyncedLyrics } from '../types';
 import type { LyricsState } from '../state/playback';
 import { layoutLine } from '../utils/kinetic';
@@ -52,12 +52,25 @@ export function Lyrics({ lyrics, lyricsState, hasTrack = true, getPosition, pale
   const [gap, setGap] = useState(false);
   const wordEls = useRef<(HTMLSpanElement | null)[]>([]);
   const lineEl = useRef<HTMLDivElement | null>(null);
+  // When the current line element appeared: drives its entrance from the frame
+  // loop (time-based), so words always end up visible even if the browser
+  // pauses CSS animations (overlay windows, throttled tabs).
+  const lineShown = useRef<{ node: HTMLDivElement | null; at: number }>({ node: null, at: 0 });
   const live = useRef({ lines, offset: settings.offsetMs, idx, gap });
   live.current = { lines, offset: settings.offsetMs, idx, gap };
 
   useEffect(() => {
     let raf = 0;
     const tick = () => {
+      // Schedule first: an error in one frame must never stop the lyrics.
+      raf = requestAnimationFrame(tick);
+      try {
+        frame();
+      } catch (e) {
+        console.warn('lyrics frame failed', e);
+      }
+    };
+    const frame = () => {
       const { lines: ls, offset, idx: shown, gap: shownGap } = live.current;
       if (ls.length) {
         const pos = getPosition() - offset + WORD_LEAD_MS;
@@ -81,16 +94,20 @@ export function Lyrics({ lyrics, lyricsState, hasTrack = true, getPosition, pale
             const wEnd = w.end_ms ?? words[k + 1]?.start_ms ?? end;
             const p = Math.max(0, Math.min(1, (pos - w.start_ms) / Math.max(80, wEnd - w.start_ms)));
             el.style.setProperty('--p', p.toFixed(3));
+            el.style.setProperty('--bp', p.toFixed(3)); // inherited copy for the box layer
             const state = p >= 1 ? 'past' : p > 0 ? 'now' : 'future';
             if (el.dataset.s !== state) el.dataset.s = state;
           });
           if (lineEl.current) {
             const lp = Math.max(0, Math.min(1, (pos - line.start_ms) / Math.max(200, end - line.start_ms)));
             lineEl.current.style.setProperty('--lp', lp.toFixed(3));
+            const now = performance.now();
+            if (lineShown.current.node !== lineEl.current) lineShown.current = { node: lineEl.current, at: now };
+            const age = Math.min(1500, now - lineShown.current.at);
+            if (age < 1500 || lineEl.current.style.getPropertyValue('--age') !== '1500') lineEl.current.style.setProperty('--age', age.toFixed(0));
           }
         }
       }
-      raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
@@ -101,9 +118,10 @@ export function Lyrics({ lyrics, lyricsState, hasTrack = true, getPosition, pale
       ({
         '--lyr-glow': palette.primary,
         '--lyr-glow2': palette.secondary,
+        '--lyr-glow3': palette.accent,
         '--lyr-size': `${variant === 'panel' ? Math.min(30, settings.size * 0.6) : variant === 'stage' ? settings.size * 1.45 : settings.size}px`,
       }) as React.CSSProperties,
-    [palette.primary, palette.secondary, settings.size, variant],
+    [palette.primary, palette.secondary, palette.accent, settings.size, variant],
   );
 
   const cls = `lyr lyr-${variant} lyr-style-${settings.style} lyr-pos-${variant === 'overlay' ? settings.position : 'center'} ${
@@ -217,8 +235,34 @@ function Kinetic({
   const words = line.words?.length ? line.words.map((w) => w.text) : line.text.split(/s+/).filter(Boolean);
   const layout = useMemo(() => layoutLine(words, { emoji }), [words.join(' '), emoji]); // eslint-disable-line react-hooks/exhaustive-deps
   const done = !wordRef; // outgoing line: everything already sung
+  // The layout's width maths is an estimate; measure the real thing and shrink
+  // to fit so no letter is ever cut off at the edge of the screen.
+  const el = useRef<HTMLDivElement | null>(null);
+  useLayoutEffect(() => {
+    const node = el.current;
+    const box = node?.closest('.lyr') as HTMLElement | null;
+    if (!node || !box) return;
+    const fit = () => {
+      node.style.setProperty('--fit', '1');
+      const cs = getComputedStyle(box);
+      const availW = box.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      const availH = box.clientHeight * 0.78;
+      const f = Math.min(1, availW / Math.max(1, node.scrollWidth), availH / Math.max(1, node.scrollHeight));
+      node.style.setProperty('--fit', (f * 0.98).toFixed(3));
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(box);
+    void document.fonts?.ready.then(fit);
+    return () => ro.disconnect();
+  }, [layout]);
+  const setRef = (node: HTMLDivElement | null) => {
+    el.current = node;
+    if (typeof lineRef === 'function') lineRef(node);
+    else if (lineRef) (lineRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+  };
   return (
-    <div className={`lyr-k ${className}`} ref={lineRef} style={{ '--ks': layout.scale } as React.CSSProperties} aria-label={line.text}>
+    <div className={`lyr-k ${className}`} ref={setRef} style={{ '--ks': layout.scale } as React.CSSProperties} aria-label={line.text}>
       {layout.rows.map((row, r) => (
         <div key={r} className={`lyr-k-row lyr-k-${row.justify}`} style={{ '--shift': `${row.shift.toFixed(2)}em` } as React.CSSProperties}>
           {row.words.map((w) => (
@@ -226,7 +270,7 @@ function Kinetic({
               key={w.k}
               ref={wordRef ? (el) => wordRef(w.k, el) : undefined}
               data-s={done ? 'past' : 'future'}
-              className={`lyr-kw lyr-kt-${w.tone}${w.box ? ' lyr-kbox' : ''}${w.tuck ? ' lyr-ktuck' : ''}`}
+              className={`lyr-kw lyr-kt-${w.tone === 'alt' && w.k % 2 ? 'alt2' : w.tone}${w.box ? ' lyr-kbox' : ''}${w.tuck ? ' lyr-ktuck' : ''}`}
               style={
                 {
                   '--sz': w.size.toFixed(2),
@@ -239,8 +283,12 @@ function Kinetic({
                 } as React.CSSProperties
               }
             >
-              {w.text}
-              {w.emoji && <span className="lyr-kemoji">{w.emoji}</span>}
+              <span className="lyr-kt">{w.text}</span>
+              {w.emoji && (
+                <span className="lyr-kemoji" aria-hidden>
+                  {w.emoji}
+                </span>
+              )}
             </span>
           ))}
         </div>
