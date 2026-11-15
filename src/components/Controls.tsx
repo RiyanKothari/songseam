@@ -138,10 +138,9 @@ export function LyricsControls({ settings, update, desktop }: { settings: AppSet
         onChange={(offsetMs) => set({ offsetMs })}
         fmt={(v) => (v === 0 ? 'in sync' : `${v > 0 ? 'later' : 'earlier'} ${Math.abs(v) / 1000}s`)}
       />
-      {l.style === 'kinetic' ? (
+      <Toggle label="Show next line" checked={l.showNext} onChange={(showNext) => set({ showNext })} />
+      {l.style === 'kinetic' && (
         <Toggle label="Emoji accents" hint="💬 next to “tell”, 🔥 next to “fire” …" checked={l.emoji} onChange={(emoji) => set({ emoji })} />
-      ) : (
-        <Toggle label="Show next line" checked={l.showNext} onChange={(showNext) => set({ showNext })} />
       )}
       <Toggle
         label="Blackout in Stage"

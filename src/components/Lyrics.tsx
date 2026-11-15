@@ -14,7 +14,12 @@ interface Props {
   isPlaying: boolean;
 }
 
-const GAP_MS = 3500; // silence long enough to show the ♪ dots
+const GAP_MS = 6000; // silence long enough to show the ♪ dots
+const HOLD_MS = 2500; // keep a finished line up this long before a pause
+/** Show each line this much before it is sung, so it can be read in time. */
+const LEAD_MS = 450;
+/** Light words a touch early to cover drawing + display latency. */
+const WORD_LEAD_MS = 90;
 
 function lineEnd(lines: LyricLine[], i: number): number {
   const l = lines[i];
@@ -55,11 +60,15 @@ export function Lyrics({ lyrics, lyricsState, hasTrack = true, getPosition, pale
     const tick = () => {
       const { lines: ls, offset, idx: shown, gap: shownGap } = live.current;
       if (ls.length) {
-        const pos = getPosition() - offset;
-        const i = lineAt(ls, pos);
+        const pos = getPosition() - offset + WORD_LEAD_MS;
+        // The line switches a little before it's sung (lead), words light on time.
+        const sung = lineAt(ls, pos);
+        const early = lineAt(ls, pos + LEAD_MS);
+        // ...unless the current line's last word is still being sung.
+        const i = early !== sung && sung >= 0 && lineEnd(ls, sung) > pos ? sung : early;
         const end = i >= 0 ? lineEnd(ls, i) : 0;
         const nextStart = ls[i + 1]?.start_ms ?? Infinity;
-        const inGap = i < 0 ? ls[0].start_ms - pos > GAP_MS : pos > end + 600 && nextStart - pos > GAP_MS;
+        const inGap = i < 0 ? ls[0].start_ms - pos > GAP_MS : pos > end + HOLD_MS && nextStart - pos > GAP_MS;
         if (i !== shown) setIdx(i);
         if (inGap !== shownGap) setGap(inGap);
 
@@ -128,7 +137,6 @@ export function Lyrics({ lyrics, lyricsState, hasTrack = true, getPosition, pale
     return (
       <div className={cls} style={colors}>
         <div className="lyr-k-wrap">
-          {prev && <Kinetic line={prev} emoji={settings.emoji} className="lyr-k-out" key={`o${idx}`} />}
           {gap || !cur ? (
             <div className="lyr-line lyr-cur lyr-dots" key={`g${idx}`}>
               <span />
@@ -137,6 +145,11 @@ export function Lyrics({ lyrics, lyricsState, hasTrack = true, getPosition, pale
             </div>
           ) : (
             <Kinetic line={cur} emoji={settings.emoji} key={`c${idx}`} lineRef={lineEl} wordRef={(k, el) => (wordEls.current[k] = el)} />
+          )}
+          {settings.showNext && variant !== 'overlay' && (
+            <div className="lyr-k-next" key={`n${idx}`}>
+              {(gap || !cur ? lines[Math.max(0, idx + 1)]?.text : next?.text) ?? ' '}
+            </div>
           )}
         </div>
       </div>
@@ -221,6 +234,7 @@ function Kinetic({
                   '--fx': w.fx.toFixed(2),
                   '--fy': w.fy.toFixed(2),
                   '--dy': w.dy.toFixed(2),
+                  '--k': w.k,
                   ...(done ? { '--p': 1 } : {}),
                 } as React.CSSProperties
               }

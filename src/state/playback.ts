@@ -42,18 +42,29 @@ export function usePlayback(source: Source): Playback {
   const [isPlaying, setIsPlaying] = useState(false);
   const [progressMs, setProgressMs] = useState(0);
   const [lyrics, setLyrics] = useState<SyncedLyrics | null>(null);
-  const [lyricsState, setLyricsState] = useState<LyricsState>('missing');
+  const [lyricsState, setLyricsState] = useState<LyricsState>(source === 'demo' ? 'loading' : 'missing');
   const [palette, setPalette] = useState<ColorPalette>(DEFAULT_PALETTE);
   const [error, setError] = useState<string | null>(null);
   const clock = useRef<Clock>({ pos: 0, at: Date.now(), playing: false, duration: 0 });
   const keyRef = useRef('');
   const seekAt = useRef(0); // when the user last seeked from this window
 
+  // Last position handed out, so small corrections never move time backwards
+  // (a step back re-lights words that were already sung = flicker).
+  const lastOut = useRef({ key: '', pos: 0 });
+
   const getPosition = useCallback(() => {
     const c = clock.current;
-    const p = c.pos + (c.playing ? Date.now() - c.at : 0);
+    let p = c.pos + (c.playing ? Date.now() - c.at : 0);
     if (source === 'demo' && c.duration > 0) return p % c.duration;
-    return c.duration > 0 ? Math.min(p, c.duration) : p;
+    if (c.duration > 0) p = Math.min(p, c.duration);
+    const last = lastOut.current;
+    if (last.key === keyRef.current && p < last.pos && last.pos - p < 1500 && c.playing) {
+      // A report came in a little behind: hold still until real time catches up.
+      return last.pos;
+    }
+    lastOut.current = { key: keyRef.current, pos: p };
+    return p;
   }, [source]);
 
   const setClock = (pos: number, playing: boolean, duration: number, at = Date.now()) => {
@@ -169,20 +180,27 @@ export function usePlayback(source: Source): Playback {
   useEffect(() => {
     if (source !== 'spotify') return;
     let alive = true;
+    // Spotify answers with where playback was when it built the reply, about
+    // half a round trip ago: add that back so lyrics aren't late.
+    let rtt = 250;
     const poll = async () => {
       if (!Spotify.isLoggedIn()) return;
       try {
+        const t0 = Date.now();
         const s = await Spotify.getPlayback();
+        const took = Date.now() - t0;
+        rtt = rtt * 0.7 + took * 0.3;
         if (!alive) return;
         setError(null);
         if (!s) {
           setClock(clock.current.pos, false, clock.current.duration);
           return;
         }
+        const reported = s.progressMs + (s.isPlaying ? Math.min(took, rtt) / 2 : 0);
         const predicted = clock.current.pos + (clock.current.playing ? Date.now() - clock.current.at : 0);
         // Ignore tiny drifts so the lyrics don't stutter on every poll.
-        if (Math.abs(predicted - s.progressMs) > 700 || clock.current.playing !== s.isPlaying || trackKey(s.track) !== keyRef.current) {
-          setClock(s.progressMs, s.isPlaying, s.track.duration_ms);
+        if (Math.abs(predicted - reported) > 300 || clock.current.playing !== s.isPlaying || trackKey(s.track) !== keyRef.current) {
+          setClock(reported, s.isPlaying, s.track.duration_ms);
         }
         onTrack(s.track);
       } catch (e) {
@@ -190,7 +208,7 @@ export function usePlayback(source: Source): Playback {
       }
     };
     poll();
-    const id = window.setInterval(poll, 2000);
+    const id = window.setInterval(poll, 1000);
     return () => {
       alive = false;
       clearInterval(id);

@@ -399,8 +399,12 @@ html.tv .stage-btn { font-size: 18px; padding: 12px 20px; }
    the hero word is big and hot, filler words are small and tucked, one word
    gets a highlight box that wipes in, plus an emoji accent. */
 .lyr-style-kinetic { container-type: inline-size; }
-.lyr-k-wrap { display: grid; place-items: center; width: 100%; }
-.lyr-k-wrap > * { grid-area: 1 / 1; }
+.lyr-k-wrap { display: flex; flex-direction: column; align-items: center; gap: 0.6em; width: 100%; }
+.lyr-k-next {
+  font-size: min(calc(var(--lyr-size) * 0.55), 5vw);
+  font-weight: 600; color: rgb(255 255 255 / 0.32); text-align: center; max-width: 90%;
+  animation: lyr-in 0.4s ease both;
+}
 .lyr-k {
   --kb: min(calc(var(--lyr-size) * 2.1), 10.5vw, 13vh);
   --kb: min(calc(var(--lyr-size) * 2.1), 11.6cqw, 13vh);
@@ -424,16 +428,21 @@ html.tv .stage-btn { font-size: 18px; padding: 12px 20px; }
   font-size: calc(var(--sz, 1) * 1em);
   white-space: nowrap;
   transform: rotate(var(--rot, 0deg));
-  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.22s ease, filter 0.35s ease;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.12s linear, filter 0.2s ease;
+  /* The whole line flies in together (quick stagger), readable before it's sung. */
+  animation: lyr-k-in 0.34s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+  animation-delay: calc(min(var(--k, 0), 8) * 28ms);
 }
-.lyr-kw[data-s='future'] {
-  opacity: 0;
-  transform: translate(calc(var(--fx) * 1em), calc(var(--fy) * 1em)) scale(0.3) rotate(calc(var(--rot, 0deg) - 12deg));
-}
+/* Not sung yet: visible but dim, so you can read ahead. */
+.lyr-kw[data-s='future'] { opacity: 0.32; transform: rotate(var(--rot, 0deg)) scale(0.96); }
+/* Being sung: full colour, a pop and a glow — this is what tracks the voice. */
 .lyr-kw[data-s='now'] {
-  transform: scale(1.07) rotate(var(--rot, 0deg));
+  opacity: 1;
+  transform: scale(1.08) rotate(var(--rot, 0deg));
   filter: drop-shadow(0 0 0.1em var(--lyr-glow)) drop-shadow(0 0 0.35em var(--lyr-glow));
 }
+.lyr-kw[data-s='past'] { opacity: 1; }
+@keyframes lyr-k-in { from { opacity: 0; translate: calc(var(--fx, 0) * 0.6em) calc(var(--fy, 0) * 0.6em); scale: 0.55; } }
 .lyr-ktuck { align-self: center; }
 .lyr-kt-dim { color: color-mix(in srgb, var(--lyr-glow) 80%, #000); }
 .lyr-kt-hot { color: color-mix(in srgb, var(--lyr-glow) 88%, #fff); }
@@ -451,11 +460,9 @@ html.tv .stage-btn { font-size: 18px; padding: 12px 20px; }
   letter-spacing: 0;
   animation: lyr-k-wob 2.6s ease-in-out infinite;
 }
-.lyr-k-out { animation: lyr-k-out 0.45s ease-in both; pointer-events: none; }
 .lyr-overlay .lyr-k { filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.9)); }
 .lyr-backdrop .lyr-k-wrap { background: radial-gradient(ellipse closest-side, rgb(0 0 0 / 0.42), rgb(0 0 0 / 0.2) 60%, transparent); }
 .lyr-style-kinetic .lyr-dots { font-size: min(var(--lyr-size), 9.5vw); }
-@keyframes lyr-k-out { to { opacity: 0; transform: scale(1.12) translateY(-0.3em); filter: blur(6px); } }
 @keyframes lyr-k-wob { 0%, 100% { transform: rotate(-6deg) scale(1); } 50% { transform: rotate(6deg) scale(1.08); } }
 @supports not (color: color-mix(in srgb, red 50%, blue)) {
   .lyr-kt-dim { color: var(--lyr-glow); opacity: 0.7; }
@@ -465,6 +472,7 @@ html.tv .stage-btn { font-size: 18px; padding: 12px 20px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .lyr-kw { transition: opacity 0.2s ease; }
+  .lyr-kw { animation: lyr-in 0.2s ease both; }
   .lyr-kw[data-s='future'] { transform: rotate(var(--rot, 0deg)); }
   .lyr-kemoji { animation: none; }
 }
