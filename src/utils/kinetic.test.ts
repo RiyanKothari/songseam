@@ -42,8 +42,18 @@ test('long lines are scaled to fit the width and height budget', () => {
   assert.ok(l.scale < 1 && l.scale > 0.2);
   for (const r of l.rows) {
     const w = r.words.reduce((s, x) => s + widthOf(x.text, x.size), 0);
-    assert.ok(w * l.scale <= 10.01, `row too wide: ${w * l.scale}`);
+    assert.ok(w * l.scale <= 8.01, `row too wide: ${w * l.scale}`);
   }
+});
+
+test('emoji endings and long lines get up to two different emoji', () => {
+  assert.equal(emojiFor("burnin'"), '🔥');
+  assert.equal(emojiFor('dreams'), '💤');
+  assert.equal(emojiFor('danced'), '🪩');
+  const l = layoutLine(split('I keep dancing in the city lights till the sun comes up'));
+  const em = l.rows.flatMap((r) => r.words).filter((w) => w.emoji);
+  assert.equal(em.length, 2);
+  assert.notEqual(em[0].emoji, em[1].emoji);
 });
 
 test('empty line has no rows', () => {

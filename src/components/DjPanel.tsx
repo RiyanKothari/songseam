@@ -43,6 +43,11 @@ const fmt = (ms: number) => {
 export function DjPanel({ palette, getNow }: Props) {
   const [loggedIn, setLoggedIn] = useState(Spotify.isLoggedIn());
   const [clientId, setClientIdState] = useState(Spotify.getClientId());
+  const [editId, setEditId] = useState(!Spotify.getClientId());
+  const changeClientId = (v: string) => {
+    setClientIdState(v);
+    Spotify.setClientId(v);
+  };
   const [authBusy, setAuthBusy] = useState(false);
   const [playlists, setPlaylists] = useState<Spotify.PlaylistSummary[] | null>(null);
   const [chosen, setChosen] = useState<Set<string>>(() => new Set([LIKED]));
@@ -165,10 +170,11 @@ export function DjPanel({ palette, getNow }: Props) {
         <div>
           <h3 className="h3">Connect Spotify</h3>
           <p className="muted mt-1">
-            The DJ reads your Liked Songs and your own playlists, then plays the planned set on Spotify. Spotify requires your
-            own (free) developer app for this:
+            The DJ reads your Liked Songs and your own playlists, then plays the planned set on Spotify.
+            {editId && ' Spotify requires your own (free) developer app for this:'}
           </p>
         </div>
+        {editId && (
         <ol className="steps">
           <li>
             Open <button className="link" onClick={() => void openExternal('https://developer.spotify.com/dashboard')}>developer.spotify.com/dashboard</button> and
@@ -177,10 +183,19 @@ export function DjPanel({ palette, getNow }: Props) {
           <li>
             Add this Redirect URI: <code className="code">{Spotify.redirectUri()}</code>
           </li>
-          <li>Copy the app’s Client ID here:</li>
+          <li>Copy the app’s Client ID here (it’s remembered):</li>
         </ol>
+        )}
+        {!editId && (
+          <p className="muted text-xs">
+            {Spotify.usingBuiltInClientId() ? 'Using the built-in Spotify app' : 'Using your saved Client ID'} <code className="code">{clientId.slice(0, 4)}…{clientId.slice(-4)}</code>{' '}
+            <button className="link" onClick={() => setEditId(true)}>
+              Change
+            </button>
+          </p>
+        )}
         <div className="flex gap-2">
-          <input className="input flex-1" placeholder="Client ID" value={clientId} onChange={(e) => setClientIdState(e.target.value)} spellCheck={false} />
+          {editId && <input className="input flex-1" placeholder="Client ID" value={clientId} onChange={(e) => changeClientId(e.target.value)} spellCheck={false} />}
           <button className="btn btn-primary" disabled={!clientId.trim() || authBusy} onClick={connect}>
             {authBusy ? 'Waiting for browser…' : 'Connect'}
           </button>

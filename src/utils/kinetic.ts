@@ -44,38 +44,88 @@ const STOP = new Set(
   'a an the i you me my your we us our he she it its they them their to of in on at by for and or but so if is am are was be been do did not no oh ooh yeah ya la na im i\'m you\'re it\'s don\'t can\'t that this with just all up as like'.split(' '),
 );
 
-const EMOJI: [RegExp, string][] = [
-  [/^(tell|told|say|said|says|talk|talking|speak|call|calling|words?)$/, '💬'],
-  [/^(love|loving|lover|heart)$/, '❤️'],
-  [/^(broken|heartbreak|break)$/, '💔'],
-  [/^(fire|burn|burning|flames?|hot)$/, '🔥'],
-  [/^(night|moon|midnight|dark)$/, '🌙'],
-  [/^(sun|sunshine|summer|daylight)$/, '☀️'],
-  [/^(stars?|shine|shining)$/, '⭐'],
-  [/^(cry|crying|tears?|rain|raining)$/, '💧'],
-  [/^(money|cash|rich|dollars?)$/, '💸'],
-  [/^(phone|text|texts|ring)$/, '📱'],
-  [/^(dance|dancing|party)$/, '🪩'],
-  [/^(kiss|kissing|lips)$/, '💋'],
-  [/^(world|earth)$/, '🌍'],
-  [/^(time|clock|tonight|forever)$/, '⏳'],
-  [/^(eyes|see|look|looking|watch)$/, '👀'],
-  [/^(king|queen|crown)$/, '👑'],
-  [/^(fly|flying|sky|high|heaven)$/, '☁️'],
-  [/^(ocean|sea|waves?|water)$/, '🌊'],
-  [/^(music|song|sing|singing)$/, '🎵'],
-  [/^(car|drive|driving|ride)$/, '🚗'],
-  [/^(ghost|haunt|haunted)$/, '👻'],
-  [/^(angel|pray|praying)$/, '😇'],
+/** Emoji accents: each row is a list of words (base forms) and its emoji. */
+const EMOJI_WORDS: [string, string][] = [
+  ['tell say said talk speak call word words whisper conversation chat', '💬'],
+  ['love lover loving heart hearts baby babe darling honey sweetheart', '❤️'],
+  ['broken heartbreak heartbroken break breaking', '💔'],
+  ['fire burn burning flame flames hot heat lit blaze', '🔥'],
+  ['night moon midnight dark darkness', '🌙'],
+  ['sun sunshine summer daylight sunny sunrise sunset', '☀️'],
+  ['star stars shine shining sparkle glitter', '⭐'],
+  ['cry crying tear tears sad', '😢'],
+  ['rain raining storm thunder', '🌧️'],
+  ['money cash rich dollar dollars paid pay bank', '💸'],
+  ['phone text texting ring calling', '📱'],
+  ['dance dancing party club', '🪩'],
+  ['kiss kissing lips', '💋'],
+  ['world earth planet globe', '🌍'],
+  ['time clock forever minute minutes hour hours', '⏳'],
+  ['eyes see look looking watch watching stare', '👀'],
+  ['king queen crown royal', '👑'],
+  ['fly flying sky skies high heaven cloud clouds', '☁️'],
+  ['ocean sea wave waves water swim beach', '🌊'],
+  ['music song songs sing singing melody radio beat', '🎵'],
+  ['car drive driving ride riding road highway', '🚗'],
+  ['ghost haunt haunted', '👻'],
+  ['angel pray praying prayer god bless', '😇'],
+  ['devil demon sin sins evil', '😈'],
+  ['smile smiling laugh laughing happy joy', '😊'],
+  ['crazy insane wild mad', '🤪'],
+  ['cool chill ice cold freeze frozen snow winter', '❄️'],
+  ['flower flowers rose roses bloom garden', '🌹'],
+  ['home house room bed', '🏠'],
+  ['city lights street streets town downtown', '🌃'],
+  ['run running away escape', '🏃'],
+  ['dream dreams dreaming sleep sleeping asleep', '💤'],
+  ['wake awake morning', '⏰'],
+  ['drink drinks drunk wine whiskey champagne bar', '🥂'],
+  ['smoke smoking high', '💨'],
+  ['gun shot shoot bullet bullets', '💥'],
+  ['war fight fighting battle', '⚔️'],
+  ['gold diamond diamonds ring jewel', '💎'],
+  ['strong power powerful strength', '💪'],
+  ['brain mind think thinking thought thoughts', '🧠'],
+  ['crown win winning winner champion', '🏆'],
+  ['rocket moonshot', '🚀'],
+  ['electric lightning shock', '⚡'],
+  ['magic spell', '✨'],
+  ['hand hands touch hold holding', '🤝'],
+  ['secret secrets quiet silence silent', '🤫'],
+  ['lie lies liar lying', '🤥'],
+  ['cold blood bleed bleeding', '🩸'],
+  ['skin body', '💃'],
+  ['money money', '💸'],
+  ['cherry sweet sugar candy', '🍒'],
+  ['butterfly butterflies', '🦋'],
+  ['lion tiger wolf', '🐺'],
+  ['crown', '👑'],
+  ['door doors key keys lock', '🔑'],
+  ['mirror reflection', '🪞'],
+  ['wings wing bird birds', '🕊️'],
+  ['tears', '😢'],
+  ['ice', '🧊'],
+  ['heat', '🔥'],
+  ['sea', '🌊'],
+  ['clock', '⏳'],
 ];
+const EMOJI = new Map<string, string>();
+for (const [list, e] of EMOJI_WORDS) for (const w of list.split(' ')) if (!EMOJI.has(w)) EMOJI.set(w, e);
 
 export function clean(word: string): string {
   return word.toLowerCase().replace(/[^a-z']/g, '');
 }
 
+/** Emoji for a word, also matching simple endings ("burnin'", "dreams", "cried"). */
 export function emojiFor(word: string): string | undefined {
   const w = clean(word).replace(/'/g, '');
-  return EMOJI.find(([re]) => re.test(w))?.[1];
+  if (w.length < 2) return undefined;
+  const tries = [w, w.replace(/in$/, 'ing'), w.replace(/(ing|ed|es|s|y)$/, ''), w.replace(/ied$/, 'y'), w.replace(/(ing|ed)$/, 'e')];
+  for (const t of tries) {
+    const e = EMOJI.get(t);
+    if (e) return e;
+  }
+  return undefined;
 }
 
 /** Small deterministic PRNG (mulberry32) seeded from a string. */
@@ -97,9 +147,9 @@ export function widthOf(text: string, size: number): number {
   return (text.length * 0.56 + 0.1) * size;
 }
 
-const MAX_W = 10; // row width budget, em of base size
-const MAX_H = 5.2; // block height budget, em of base size
-const MAX_UP = 1.35; // short lines may grow this much
+const MAX_W = 8; // row width budget, em of base size
+const MAX_H = 5; // block height budget, em of base size
+const MAX_UP = 1.5; // short lines may grow this much
 const LINE_H = 0.92;
 
 export function layoutLine(words: string[], opts: { emoji?: boolean } = {}): KLayout {
@@ -118,15 +168,13 @@ export function layoutLine(words: string[], opts: { emoji?: boolean } = {}): KLa
   const second = order[1] && order[1][0] > 0 ? order[1][1] : -1;
   const boxed = hero >= 0 && r() < 0.55 ? (r() < 0.6 ? hero : second) : -1;
 
-  let emojiAt = -1;
-  let emoji: string | undefined;
+  // Up to one emoji per line, two on long lines (different emoji, not side by side).
+  const emojiOf = new Map<number, string>();
   if (opts.emoji !== false) {
-    for (let k = 0; k < n && emojiAt < 0; k++) {
+    const limit = n >= 6 ? 2 : 1;
+    for (let k = 0; k < n && emojiOf.size < limit; k++) {
       const e = emojiFor(words[k]);
-      if (e) {
-        emojiAt = k;
-        emoji = e;
-      }
+      if (e && ![...emojiOf.values()].includes(e) && ![...emojiOf.keys()].some((j) => k - j < 3)) emojiOf.set(k, e);
     }
   }
 
@@ -146,7 +194,7 @@ export function layoutLine(words: string[], opts: { emoji?: boolean } = {}): KLa
       rot: !stop && r() < 0.3 ? (r() - 0.5) * 14 : 0,
       fx: Math.cos(angle) * 0.9,
       fy: Math.sin(angle) * 0.9,
-      emoji: k === emojiAt ? emoji : undefined,
+      emoji: emojiOf.get(k),
     };
   });
 

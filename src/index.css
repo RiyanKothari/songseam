@@ -402,10 +402,10 @@ html.tv .stage-btn { font-size: 18px; padding: 12px 20px; }
 .lyr-k-wrap { display: grid; place-items: center; width: 100%; }
 .lyr-k-wrap > * { grid-area: 1 / 1; }
 .lyr-k {
-  --kb: min(calc(var(--lyr-size) * 1.5), 8vw, 10vh);
-  --kb: min(calc(var(--lyr-size) * 1.5), 9cqw, 10vh);
+  --kb: min(calc(var(--lyr-size) * 2.1), 10.5vw, 13vh);
+  --kb: min(calc(var(--lyr-size) * 2.1), 11.6cqw, 13vh);
   font-size: calc(var(--kb) * var(--ks, 1));
-  width: min(11em, 100%);
+  width: min(8.6em, 100%);
   display: flex;
   flex-direction: column;
   font-weight: 800;
@@ -447,7 +447,7 @@ html.tv .stage-btn { font-size: 18px; padding: 12px 20px; }
 .lyr-kemoji {
   display: inline-block;
   margin-left: 0.18em;
-  font-size: 0.8em;
+  font-size: 1em;
   letter-spacing: 0;
   animation: lyr-k-wob 2.6s ease-in-out infinite;
 }

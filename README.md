@@ -61,7 +61,7 @@ Spotify requires each user of a development app to bring their own app:
 
 1. Create an app at <https://developer.spotify.com/dashboard> (tick *Web API*).
 2. Add the redirect URI shown in the DJ tab — `http://127.0.0.1:43821/callback` for the desktop app, or `<site origin>/callback` for the web build.
-3. Paste the Client ID into the DJ tab and press **Connect**.
+3. Put your Client ID in `.env` (`VITE_SPOTIFY_CLIENT_ID`) so it is built in, or paste it into the DJ tab once (it is remembered). Then press **Connect**.
 
 Limits set by Spotify (2026): the app owner needs Premium, controlling playback needs Premium, and dev-mode apps can only read tracks of playlists you own or collaborate on (plus Liked Songs).
 

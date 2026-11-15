@@ -40,8 +40,27 @@ export function redirectUri(): string {
   return isDesktop ? `http://127.0.0.1:${DESKTOP_PORT}/callback` : `${window.location.origin}/callback`;
 }
 
-export const getClientId = () => localStorage.getItem(CLIENT_KEY) ?? '';
-export const setClientId = (id: string) => localStorage.setItem(CLIENT_KEY, id.trim());
+/** Client ID built into the app (VITE_SPOTIFY_CLIENT_ID in .env). PKCE client IDs are public, not secrets. */
+export const BUILT_IN_CLIENT_ID = (import.meta.env.VITE_SPOTIFY_CLIENT_ID ?? '').trim();
+const storedClientId = () => {
+  try {
+    return localStorage.getItem(CLIENT_KEY)?.trim() ?? '';
+  } catch {
+    return '';
+  }
+};
+/** The user's own Client ID if they set one, otherwise the built-in one. */
+export const getClientId = () => storedClientId() || BUILT_IN_CLIENT_ID;
+export const usingBuiltInClientId = () => !storedClientId() && !!BUILT_IN_CLIENT_ID;
+/** Saved immediately; an empty value goes back to the built-in ID. */
+export const setClientId = (id: string) => {
+  try {
+    if (id.trim() && id.trim() !== BUILT_IN_CLIENT_ID) localStorage.setItem(CLIENT_KEY, id.trim());
+    else localStorage.removeItem(CLIENT_KEY);
+  } catch {
+    /* storage blocked: the value still works for this session via state */
+  }
+};
 
 function loadToken(): Token | null {
   try {
