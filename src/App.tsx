@@ -1,3 +1,4 @@
+import { useMediaFallback } from './state/mediaFallback';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePlayback, type Source } from './state/playback';
 import { useSettings } from './state/settings';
@@ -24,8 +25,10 @@ const OVERLAY_KEY = 'songseam.overlay';
 
 export default function App() {
   const [webSource, setWebSource] = useState<Source>(() => (localStorage.getItem(WEB_SOURCE_KEY) as Source) || 'demo');
-  const source: Source = isDesktop ? 'windows' : webSource;
+  const media = useMediaFallback();
+  const source: Source = media.source(webSource);
   const pb = usePlayback(source);
+  media.useWatch(pb.error);
   const [settings, update] = useSettings();
   const levels = useAudioLevels();
   const [tab, setTab] = useState<Tab>('glow');
@@ -171,7 +174,20 @@ export default function App() {
               </div>
             </div>
           </div>
-          {pb.error && <p className="error">{pb.error}</p>}
+          {media.stuck ? (
+            <div className="notice">
+              <p>
+                <strong>Windows media controls stopped responding</strong>, so SongSeam can’t see the Spotify app right now.{' '}
+                {Spotify.isLoggedIn() ? 'Following Spotify through your Spotify account meanwhile.' : 'Connect Spotify in the Mood DJ tab to keep going meanwhile.'}
+              </p>
+              <p className="muted text-xs">Restarting Windows Explorer fixes it (your taskbar disappears for a second; open windows stay open).</p>
+              <button className="btn" disabled={media.restarting} onClick={() => void media.restart()}>
+                {media.restarting ? 'Restarting…' : 'Restart Windows media'}
+              </button>
+            </div>
+          ) : (
+            pb.error && <p className="error">{pb.error}</p>
+          )}
           {source === 'spotify' && !Spotify.isLoggedIn() && <p className="muted text-sm">Connect Spotify in the Mood DJ tab to follow your playback.</p>}
 
           <div className="preview" aria-label="Preview of your screen">

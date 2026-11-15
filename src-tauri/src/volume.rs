@@ -73,6 +73,16 @@ pub(crate) mod imp {
     }
 
     /// Smoothly ramps to `to` over `ms` with an equal-power style curve.
+    /// Volume at `t` (0..1) of a fade from `from` to `to` that is linear in
+    /// decibels over a 48 dB range, so it sounds like an even fade to the ear
+    /// (a straight line in volume sounds like nothing happens, then a sudden drop).
+    pub fn db_curve(from: f32, to: f32, t: f32) -> f32 {
+        const FLOOR: f32 = 0.003_981; // -48 dB
+        let t = t.clamp(0.0, 1.0);
+        let shape = |x: f32| (10f32.powf(-2.4 * x) - FLOOR) / (1.0 - FLOOR); // 1 -> 0
+        if to < from { to + (from - to) * shape(t) } else { from + (to - from) * (1.0 - shape(1.0 - t)) }
+    }
+
     pub fn fade(app: &str, to: f32, ms: u64) -> windows::core::Result<bool> {
         let s = sessions_for(app)?;
         let Some(first) = s.first() else { return Ok(false) };
@@ -80,9 +90,7 @@ pub(crate) mod imp {
         let steps = (ms / 25).max(1);
         for i in 1..=steps {
             let t = i as f32 / steps as f32;
-            // Sine ease: gentle at both ends, so fades sound natural.
-            let e = 0.5 - 0.5 * (std::f32::consts::PI * t).cos();
-            let level = from + (to - from) * e;
+            let level = db_curve(from, to, t);
             for v in &s {
                 unsafe { v.SetMasterVolume(level.clamp(0.0, 1.0), std::ptr::null())? };
             }

@@ -5,6 +5,13 @@
 //! and, at the cue-out point, waits for a beat, fades Spotify down with the
 //! Windows mixer, skips, cues the next track to its cue-in point and fades
 //! it up. One track at a time — Spotify's audio is never layered or altered.
+//!
+//! Timing: the mix-out lands on a phrase boundary (every 4 bars, counted from
+//! where the vocals end) and then on a detected beat; fades last a whole
+//! number of beats and follow a decibel curve so they sound even to the ear.
+//!
+//! If Windows' media service hangs, the panel feeds positions from Spotify's
+//! Web API (dj_feed) and performs skips/seeks for the engine (dj-control).
 
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -42,6 +49,33 @@ pub struct DjStatus {
 
 static RUN: AtomicU64 = AtomicU64::new(0);
 static STATUS: Mutex<Option<DjStatus>> = Mutex::new(None);
+
+/// Playback reported by the panel from Spotify's Web API: (title, position, playing, at unix ms).
+static FEED: Mutex<Option<(String, i64, bool, i64)>> = Mutex::new(None);
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
+struct ControlRequest {
+    action: String,
+    position_ms: Option<i64>,
+}
+
+/// Where to mix out, at or after `pos`: the next phrase boundary (4 bars,
+/// counted from `anchor`) if it is within 2 bars, otherwise the next bar line.
+pub fn exit_point(pos: i64, anchor: i64, bar_ms: i64) -> i64 {
+    let bar_ms = bar_ms.max(1);
+    let phrase = 4 * bar_ms;
+    let ceil_to = |unit: i64| anchor + (pos - anchor + unit - 1).div_euclid(unit) * unit;
+    let next_phrase = ceil_to(phrase);
+    if next_phrase - pos <= 2 * bar_ms { next_phrase } else { ceil_to(bar_ms) }
+}
+
+/// A fade length rounded to whole beats (at least 2) at `bpm`.
+pub fn beats_ms(ms: u64, bpm: f32) -> u64 {
+    let beat = 60_000.0 / bpm.clamp(60.0, 200.0) as f64;
+    ((ms as f64 / beat).round().max(2.0) * beat) as u64
+}
 
 fn norm(s: &str) -> String {
     let mut out = String::new();
@@ -87,21 +121,48 @@ mod run {
         playing: bool,
     }
 
+    /// What's playing: Windows media controls first, Spotify's Web API (fed by the panel) when those are hung.
     fn live() -> Option<Live> {
-        let np = media::now_playing().ok()??;
-        let pos = np.position_ms + if np.is_playing { unix_ms() - np.position_updated_at_ms } else { 0 };
-        Some(Live { title: np.title, pos, playing: np.is_playing })
+        if let Ok(Some(np)) = media::now_playing() {
+            let pos = np.position_ms + if np.is_playing { unix_ms() - np.position_updated_at_ms } else { 0 };
+            return Some(Live { title: np.title, pos, playing: np.is_playing });
+        }
+        let feed = FEED.lock().unwrap_or_else(|e| e.into_inner()).clone();
+        let (title, pos, playing, at) = feed?;
+        let age = unix_ms() - at;
+        if age > 8000 {
+            return None;
+        }
+        Some(Live { title, pos: pos + if playing { age } else { 0 }, playing })
+    }
+
+    /// Fade through Spotify's own volume (the panel does it via the Web API)
+    /// when Spotify plays on another device, e.g. a phone. Blocks for `ms`.
+    fn remote_fade(app: &AppHandle, action: &str, ms: u64, run: u64) {
+        let _ = app.emit("dj-control", ControlRequest { action: action.into(), position_ms: Some(ms as i64) });
+        let t0 = now_ms();
+        while now_ms() - t0 < ms && still(run) {
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
+
+    /// Skip / seek through Windows, or ask the panel to do it via Spotify's API.
+    fn control(app: &AppHandle, action: &str, position_ms: Option<i64>) {
+        if !media::stuck() && matches!(media::control(action, position_ms), Ok(true)) {
+            return;
+        }
+        let _ = app.emit("dj-control", ControlRequest { action: action.into(), position_ms });
     }
 
     fn still(run: u64) -> bool {
         RUN.load(Ordering::SeqCst) == run
     }
 
-    /// Waits for the next detected beat (max ~2 beats) so the cut lands in time.
+    /// Snaps to the next detected beat (waits at most one beat) so the fade starts in time.
     fn wait_for_beat(bpm: f32, run: u64) {
         let beat_ms = if bpm > 40.0 { 60_000.0 / bpm } else { 500.0 } as u64;
         let since = now_ms();
-        while now_ms() - since < beat_ms * 2 && still(run) {
+        while now_ms() - since < beat_ms && still(run) {
             if LAST_BEAT_MS.load(Ordering::Relaxed) > since {
                 return;
             }
@@ -149,7 +210,7 @@ mod run {
             if cued != Some(i) {
                 cued = Some(i);
                 if step.cue_in_ms > now.pos + 1500 {
-                    let _ = media::control("seek", Some(step.cue_in_ms));
+                    control(&app, "seek", Some(step.cue_in_ms));
                 }
             }
 
@@ -196,18 +257,34 @@ mod run {
             }
 
             // ---- Transition ----
-            let why = if outro && until > 0 { format!("Heard the outro start — mixing out {}s early, on the beat", until / 1000) } else { "Mixing out on the beat".to_string() };
+            // Land on the phrase: 4-bar blocks counted from where the vocals end
+            // (lyric lines end on phrase lines), or from the cue-in point.
+            let fade_out = beats_ms(step.fade_out_ms, step.bpm);
+            let anchor = if step.vocal_end_ms > 0 { step.vocal_end_ms } else { step.cue_in_ms };
+            let latest = (step.duration_ms - fade_out as i64 - 500).max(now.pos);
+            let target = exit_point(now.pos, anchor, bar_ms).min(latest);
+            let why = if outro && until > 0 {
+                format!("Heard the outro start — mixing out {}s early, on the phrase", until / 1000)
+            } else {
+                "Mixing out on the phrase".to_string()
+            };
             publish(&app, DjStatus { state: "transitioning".into(), index: i, message: why, fades_available: fades, next_fade_in_ms: Some(0) });
+            let t_start = now_ms() as i64;
+            while still(run) && now.pos + (now_ms() as i64 - t_start) < target - 40 {
+                std::thread::sleep(Duration::from_millis(10));
+            }
             wait_for_beat(step.bpm, run);
             if fades {
-                let _ = volume::fade("spotify", 0.0, step.fade_out_ms);
+                let _ = volume::fade("spotify", 0.0, fade_out);
+            } else {
+                remote_fade(&app, "fade-out", fade_out, run);
             }
             if !still(run) {
                 break;
             }
             // Skip unless Spotify already moved on by itself.
             if live().map(|l| norm(&l.title) == key).unwrap_or(true) {
-                let _ = media::control("next", None);
+                control(&app, "next", None);
             }
             // Wait (≤6 s) for the next track to start, then cue it before fading in.
             let t0 = now_ms();
@@ -218,13 +295,19 @@ mod run {
                 std::thread::sleep(Duration::from_millis(60));
             }
             if next.cue_in_ms > 1500 {
-                let _ = media::control("seek", Some(next.cue_in_ms));
-                std::thread::sleep(Duration::from_millis(250));
+                control(&app, "seek", Some(next.cue_in_ms));
+                // The Web API route applies a seek more slowly than Windows does.
+                std::thread::sleep(Duration::from_millis(if media::stuck() { 700 } else { 250 }));
             }
             cued = Some(i + 1);
             index = i + 1;
+            // Bring the next track in on its own beat.
+            wait_for_beat(next.bpm, run);
+            let fade_in = beats_ms(next.fade_in_ms, next.bpm);
             if fades {
-                let _ = volume::fade("spotify", base, next.fade_in_ms);
+                let _ = volume::fade("spotify", base, fade_in);
+            } else {
+                remote_fade(&app, "fade-in", fade_in, run);
             }
         }
         // Stopped: never leave Spotify silent.
@@ -251,6 +334,12 @@ pub fn dj_start(app: AppHandle, steps: Vec<Step>) -> Result<(), String> {
     Ok(())
 }
 
+/// Playback from Spotify's Web API, sent by the panel during a set (used when Windows media controls hang).
+#[tauri::command]
+pub fn dj_feed(title: String, position_ms: i64, is_playing: bool) {
+    *FEED.lock().unwrap_or_else(|e| e.into_inner()) = Some((title, position_ms, is_playing, unix_ms()));
+}
+
 #[tauri::command]
 pub fn dj_stop(app: AppHandle) {
     RUN.fetch_add(1, Ordering::SeqCst);
@@ -264,7 +353,23 @@ pub fn dj_status() -> Option<DjStatus> {
 
 #[cfg(test)]
 mod tests {
-    use super::norm;
+    use super::{beats_ms, exit_point, norm};
+
+    #[test]
+    fn exits_land_on_phrases_or_bars() {
+        // 120 bpm: bar = 2000 ms, phrase = 8000 ms; vocals ended at 100 000.
+        assert_eq!(exit_point(106_500, 100_000, 2000), 108_000); // phrase 1.5 bars away
+        assert_eq!(exit_point(101_000, 100_000, 2000), 102_000); // phrase too far: next bar
+        assert_eq!(exit_point(108_000, 100_000, 2000), 108_000); // already on it
+        assert_eq!(exit_point(99_000, 100_000, 2000), 100_000); // before the anchor
+    }
+
+    #[test]
+    fn fades_are_whole_beats() {
+        assert_eq!(beats_ms(6000, 120.0), 6000);
+        assert_eq!(beats_ms(6200, 120.0), 6000);
+        assert_eq!(beats_ms(100, 120.0), 1000); // at least 2 beats
+    }
 
     #[test]
     fn titles_match_across_sources() {

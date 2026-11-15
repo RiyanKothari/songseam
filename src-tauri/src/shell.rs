@@ -271,3 +271,27 @@ pub fn client_log(window: tauri::Window, level: String, message: String) {
         _ => log::info!("[{}] {}", window.label(), msg),
     }
 }
+
+/// Restarts Windows Explorer, which hosts the media-controls service. Only run
+/// when the user presses "Restart Windows media" after it stopped answering.
+#[tauri::command]
+pub async fn restart_explorer() -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        tauri::async_runtime::spawn_blocking(|| {
+            let _ = std::process::Command::new("taskkill").args(["/f", "/im", "explorer.exe"]).creation_flags(CREATE_NO_WINDOW).status();
+            std::thread::sleep(Duration::from_millis(800));
+            std::process::Command::new("explorer.exe").spawn().map_err(|e| e.to_string())?;
+            // Give the shell a moment to bring the media service back, then retry right away.
+            std::thread::sleep(Duration::from_millis(2500));
+            crate::media::imp::reset();
+            Ok(())
+        })
+        .await
+        .map_err(|e| e.to_string())?
+    }
+    #[cfg(not(windows))]
+    Ok(())
+}

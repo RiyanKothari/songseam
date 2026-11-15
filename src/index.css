@@ -468,3 +468,7 @@ html.tv .stage-btn { font-size: 18px; padding: 12px 20px; }
   .lyr-kw[data-s='future'] { transform: rotate(var(--rot, 0deg)); }
   .lyr-kemoji { animation: none; }
 }
+
+.notice { display: grid; gap: 8px; padding: 12px 14px; border-radius: 14px; font-size: 13px; line-height: 1.5;
+  background: rgb(255 170 60 / 0.08); border: 1px solid rgb(255 170 60 / 0.3); }
+.notice .btn { justify-self: start; }

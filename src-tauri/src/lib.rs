@@ -41,6 +41,8 @@ pub fn run() {
       shell::spotify_login,
       dj::dj_start,
       dj::dj_stop,
+            dj::dj_feed,
+            shell::restart_explorer,
       dj::dj_status,
       shell::client_log,
     ])

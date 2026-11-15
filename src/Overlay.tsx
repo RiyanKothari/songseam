@@ -3,6 +3,7 @@ import { usePlayback } from './state/playback';
 import { useSettings } from './state/settings';
 import { useAudioLevels } from './state/levels';
 import { EdgeGlow } from './components/EdgeGlow';
+import { useMediaFallback } from './state/mediaFallback';
 import { Lyrics } from './components/Lyrics';
 
 /**
@@ -10,7 +11,10 @@ import { Lyrics } from './components/Lyrics';
  * Follows whatever Windows media controls report (Spotify preferred).
  */
 export function Overlay() {
-  const pb = usePlayback('windows');
+  // Same fallback as the main window: Spotify's API while Windows media controls are hung.
+  const media = useMediaFallback();
+  const pb = usePlayback(media.source('windows'));
+  media.useWatch(pb.error);
   const [settings] = useSettings();
   const levels = useAudioLevels();
 

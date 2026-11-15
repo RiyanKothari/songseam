@@ -57,6 +57,17 @@ function toSteps(plan: SetPlan) {
  * starts it and relays its status. Browser: a fallback loop here that fades
  * with Spotify's volume API (needs this tab open).
  */
+/**
+ * Volume at t (0..1) of a fade that is linear in decibels over 48 dB, so it
+ * sounds even to the ear. Same curve as the Windows-mixer fades.
+ */
+export function dbCurve(from: number, to: number, t: number): number {
+  const FLOOR = 0.003981; // -48 dB
+  const x = Math.min(1, Math.max(0, t));
+  const shape = (u: number) => (10 ** (-2.4 * u) - FLOOR) / (1 - FLOOR);
+  return to < from ? to + (from - to) * shape(x) : from + (to - from) * (1 - shape(1 - x));
+}
+
 export class SetRunner {
   private plan: SetPlan | null = null;
   private timer: number | null = null;
@@ -64,6 +75,8 @@ export class SetRunner {
   private baseVolume = 0.8;
   private status: RunnerStatus = IDLE;
   private unlisten: (() => void) | null = null;
+  private unlistenControl: (() => void) | null = null;
+  private feedTimer: number | null = null;
   private getNow: () => NowInfo | null;
   private onStatus: (s: RunnerStatus) => void;
 
@@ -72,6 +85,21 @@ export class SetRunner {
     this.onStatus = onStatus;
     if (isDesktop) {
       on<RunnerStatus>('dj-status', (s) => this.set(s)).then((u) => (this.unlisten = u));
+      // The engine asks for skips/seeks here when Windows media controls are hung.
+      on<{ action: string; positionMs: number | null }>('dj-control', (c) => {
+        // fade-out / fade-in: Spotify plays on another device (no Windows mixer), so fade its volume remotely.
+        const p =
+          c.action === 'next'
+            ? Spotify.player.next()
+            : c.action === 'seek'
+              ? Spotify.player.seek(c.positionMs ?? 0)
+              : c.action === 'fade-out'
+                ? this.fade(0, c.positionMs ?? 3000)
+                : c.action === 'fade-in'
+                  ? this.fade(this.baseVolume, c.positionMs ?? 2000)
+                  : null;
+        p?.catch((e) => this.set({ message: `Spotify didn’t take the ${c.action}: ${e instanceof Error ? e.message : e}` }));
+      }).then((u) => (this.unlistenControl = u));
       // Re-attach to a set that is already running (panel reopened, tab switched back).
       invoke<RunnerStatus | null>('dj_status').then((s) => s && this.set(s));
     }
@@ -85,6 +113,8 @@ export class SetRunner {
   /** Stop listening. On desktop the set keeps playing; in the browser it stops. */
   dispose(): void {
     this.unlisten?.();
+    this.unlistenControl?.();
+    this.stopFeed();
     if (!isDesktop) this.stop();
   }
 
@@ -101,9 +131,13 @@ export class SetRunner {
         device.id,
       );
       if (isDesktop) {
+        // Remember the listening volume: remote fades (other devices) return to it.
+        const now = await Spotify.getPlayback().catch(() => null);
+        this.baseVolume = (now?.volumePercent ?? 80) / 100 || 0.8;
         await invoke('dj_start', { steps: toSteps(plan) });
+        this.startFeed();
         if (device.type !== 'Computer') {
-          this.set({ message: `Playing on ${device.name}. Fades only work when Spotify plays on this PC.` });
+          this.set({ message: `Playing on ${device.name} — fading with Spotify’s volume (in steps; smoothest when Spotify plays on this PC).` });
         }
         return;
       }
@@ -116,7 +150,27 @@ export class SetRunner {
     }
   }
 
+  /**
+   * Backup clock for the engine: Spotify's own idea of what's playing, sent
+   * every 1.5 s. The engine uses it only while Windows media controls are hung.
+   */
+  private startFeed(): void {
+    this.stopFeed();
+    const feed = () =>
+      Spotify.getPlayback()
+        .then((p) => p && invoke('dj_feed', { title: p.track.name, positionMs: p.progressMs, isPlaying: p.isPlaying }))
+        .catch(() => {});
+    void feed();
+    this.feedTimer = window.setInterval(feed, 1500);
+  }
+
+  private stopFeed(): void {
+    if (this.feedTimer !== null) clearInterval(this.feedTimer);
+    this.feedTimer = null;
+  }
+
   stop(): void {
+    this.stopFeed();
     if (isDesktop) {
       void invoke('dj_stop').catch(() => {});
     } else {
@@ -131,12 +185,14 @@ export class SetRunner {
 
   // ---------- Browser fallback ----------
 
+  /** Stepped volume fade through Spotify's API (rate-limited, so ≤ 8 steps), on a decibel curve. */
   private async fade(to: number, ms: number) {
-    const steps = Math.max(2, Math.min(8, Math.round(ms / 700)));
+    const steps = Math.max(2, Math.min(8, Math.round(ms / 600)));
     const from = to === 0 ? this.baseVolume : 0;
+    const t0 = Date.now();
     for (let i = 1; i <= steps; i++) {
-      await Spotify.player.volume((from + ((to - from) * i) / steps) * 100).catch(() => {});
-      await sleep(ms / steps);
+      await Spotify.player.volume(dbCurve(from, to, i / steps) * 100).catch(() => {});
+      await sleep(Math.max(0, t0 + (ms * i) / steps - Date.now()));
     }
   }
 
