@@ -107,6 +107,7 @@ export function LyricsControls({ settings, update, desktop }: { settings: AppSet
           value={l.style}
           onChange={(style) => set({ style })}
           options={[
+            ['kinetic', 'Kinetic'],
             ['sweep', 'Sweep'],
             ['pop', 'Word pop'],
             ['line', 'Line'],
@@ -137,7 +138,11 @@ export function LyricsControls({ settings, update, desktop }: { settings: AppSet
         onChange={(offsetMs) => set({ offsetMs })}
         fmt={(v) => (v === 0 ? 'in sync' : `${v > 0 ? 'later' : 'earlier'} ${Math.abs(v) / 1000}s`)}
       />
-      <Toggle label="Show next line" checked={l.showNext} onChange={(showNext) => set({ showNext })} />
+      {l.style === 'kinetic' ? (
+        <Toggle label="Emoji accents" hint="💬 next to “tell”, 🔥 next to “fire” …" checked={l.emoji} onChange={(emoji) => set({ emoji })} />
+      ) : (
+        <Toggle label="Show next line" checked={l.showNext} onChange={(showNext) => set({ showNext })} />
+      )}
       <Toggle
         label="Blackout in Stage"
         hint="Stage shows only the edge glow and lyrics on pure black. Toggle live with OK / Enter / B."

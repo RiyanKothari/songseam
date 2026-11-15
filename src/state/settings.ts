@@ -19,12 +19,13 @@ export const DEFAULT_SETTINGS: AppSettings = {
   },
   lyrics: {
     onOverlay: true,
-    style: 'sweep',
+    style: 'kinetic',
     position: 'bottom',
     size: 46,
     offsetMs: 0,
     showNext: true,
     backdrop: true,
+    emoji: true,
   },
   blackout: false,
 };
@@ -36,7 +37,8 @@ export function loadSettings(): AppSettings {
     const s = JSON.parse(raw) as Partial<AppSettings>;
     return {
       glow: { ...DEFAULT_SETTINGS.glow, ...(s.glow ?? {}) },
-      lyrics: { ...DEFAULT_SETTINGS.lyrics, ...(s.lyrics ?? {}) },
+      // Settings saved before Kinetic existed have no `emoji` key: move them to the new default style once.
+      lyrics: { ...DEFAULT_SETTINGS.lyrics, ...(s.lyrics ?? {}), ...(s.lyrics && !('emoji' in s.lyrics) ? { style: 'kinetic' as const } : {}) },
       blackout: s.blackout ?? DEFAULT_SETTINGS.blackout,
     };
   } catch {

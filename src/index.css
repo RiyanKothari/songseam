@@ -393,3 +393,78 @@ html.tv .stage-btn { font-size: 18px; padding: 12px 20px; }
   .app { height: auto; min-height: 100vh; min-height: 100dvh; }
   .layout { flex: none; overflow: visible; grid-template-rows: auto auto; }
 }
+
+/* ---------------- Kinetic lyrics ----------------
+   Staggered rows of mixed-size words; each word flies in when it is sung,
+   the hero word is big and hot, filler words are small and tucked, one word
+   gets a highlight box that wipes in, plus an emoji accent. */
+.lyr-style-kinetic { container-type: inline-size; }
+.lyr-k-wrap { display: grid; place-items: center; width: 100%; }
+.lyr-k-wrap > * { grid-area: 1 / 1; }
+.lyr-k {
+  --kb: min(calc(var(--lyr-size) * 1.5), 8vw, 10vh);
+  --kb: min(calc(var(--lyr-size) * 1.5), 9cqw, 10vh);
+  font-size: calc(var(--kb) * var(--ks, 1));
+  width: min(11em, 100%);
+  display: flex;
+  flex-direction: column;
+  font-weight: 800;
+  line-height: 0.92;
+  letter-spacing: -0.035em;
+}
+.lyr-k-row { display: flex; align-items: center; column-gap: 0.22em; translate: var(--shift, 0) 0; }
+.lyr-k-start { justify-content: flex-start; }
+.lyr-k-center { justify-content: center; }
+.lyr-k-end { justify-content: flex-end; }
+.lyr-kw {
+  position: relative;
+  top: calc(var(--dy, 0) * 1em);
+  display: inline-flex;
+  align-items: center;
+  font-size: calc(var(--sz, 1) * 1em);
+  white-space: nowrap;
+  transform: rotate(var(--rot, 0deg));
+  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.22s ease, filter 0.35s ease;
+}
+.lyr-kw[data-s='future'] {
+  opacity: 0;
+  transform: translate(calc(var(--fx) * 1em), calc(var(--fy) * 1em)) scale(0.3) rotate(calc(var(--rot, 0deg) - 12deg));
+}
+.lyr-kw[data-s='now'] {
+  transform: scale(1.07) rotate(var(--rot, 0deg));
+  filter: drop-shadow(0 0 0.1em var(--lyr-glow)) drop-shadow(0 0 0.35em var(--lyr-glow));
+}
+.lyr-ktuck { align-self: center; }
+.lyr-kt-dim { color: color-mix(in srgb, var(--lyr-glow) 80%, #000); }
+.lyr-kt-hot { color: color-mix(in srgb, var(--lyr-glow) 88%, #fff); }
+.lyr-kt-light { color: color-mix(in srgb, var(--lyr-glow) 22%, #fff); }
+.lyr-kt-alt { color: color-mix(in srgb, var(--lyr-glow2) 40%, #fff); }
+/* The box wipes in behind the word as it's sung, sitting a little high so the letters spill out below. */
+.lyr-kbox {
+  padding: 0 0.1em;
+  background: linear-gradient(color-mix(in srgb, var(--lyr-glow) 48%, #000), color-mix(in srgb, var(--lyr-glow) 48%, #000)) no-repeat 0 0 / calc(var(--p, 0) * 100%) 80%;
+}
+.lyr-kemoji {
+  display: inline-block;
+  margin-left: 0.18em;
+  font-size: 0.8em;
+  letter-spacing: 0;
+  animation: lyr-k-wob 2.6s ease-in-out infinite;
+}
+.lyr-k-out { animation: lyr-k-out 0.45s ease-in both; pointer-events: none; }
+.lyr-overlay .lyr-k { filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.9)); }
+.lyr-backdrop .lyr-k-wrap { background: radial-gradient(ellipse closest-side, rgb(0 0 0 / 0.42), rgb(0 0 0 / 0.2) 60%, transparent); }
+.lyr-style-kinetic .lyr-dots { font-size: min(var(--lyr-size), 9.5vw); }
+@keyframes lyr-k-out { to { opacity: 0; transform: scale(1.12) translateY(-0.3em); filter: blur(6px); } }
+@keyframes lyr-k-wob { 0%, 100% { transform: rotate(-6deg) scale(1); } 50% { transform: rotate(6deg) scale(1.08); } }
+@supports not (color: color-mix(in srgb, red 50%, blue)) {
+  .lyr-kt-dim { color: var(--lyr-glow); opacity: 0.7; }
+  .lyr-kt-hot { color: var(--lyr-glow); }
+  .lyr-kt-light, .lyr-kt-alt { color: #fff; }
+  .lyr-kbox { background-image: linear-gradient(var(--lyr-glow), var(--lyr-glow)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lyr-kw { transition: opacity 0.2s ease; }
+  .lyr-kw[data-s='future'] { transform: rotate(var(--rot, 0deg)); }
+  .lyr-kemoji { animation: none; }
+}

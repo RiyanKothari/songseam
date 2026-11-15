@@ -71,7 +71,7 @@ export interface GlowSettings {
   custom: [string, string, string];
 }
 
-export type LyricStyle = 'sweep' | 'pop' | 'line';
+export type LyricStyle = 'kinetic' | 'sweep' | 'pop' | 'line';
 
 export interface LyricsSettings {
   onOverlay: boolean;
@@ -81,6 +81,8 @@ export interface LyricsSettings {
   offsetMs: number; // positive = lyrics later
   showNext: boolean;
   backdrop: boolean;
+  /** Kinetic style: emoji accents next to keywords (💬 for "tell", 🔥 for "fire" …). */
+  emoji: boolean;
 }
 
 export interface AppSettings {

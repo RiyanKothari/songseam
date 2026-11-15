@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ColorPalette, LyricLine, LyricsSettings, SyncedLyrics } from '../types';
 import type { LyricsState } from '../state/playback';
+import { layoutLine } from '../utils/kinetic';
 
 interface Props {
   lyrics: SyncedLyrics | null;
@@ -123,6 +124,25 @@ export function Lyrics({ lyrics, lyricsState, hasTrack = true, getPosition, pale
   const next = lines[idx + 1] ?? null;
   wordEls.current = [];
 
+  if (settings.style === 'kinetic') {
+    return (
+      <div className={cls} style={colors}>
+        <div className="lyr-k-wrap">
+          {prev && <Kinetic line={prev} emoji={settings.emoji} className="lyr-k-out" key={`o${idx}`} />}
+          {gap || !cur ? (
+            <div className="lyr-line lyr-cur lyr-dots" key={`g${idx}`}>
+              <span />
+              <span />
+              <span />
+            </div>
+          ) : (
+            <Kinetic line={cur} emoji={settings.emoji} key={`c${idx}`} lineRef={lineEl} wordRef={(k, el) => (wordEls.current[k] = el)} />
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={cls} style={colors}>
       <div className="lyr-stack">
@@ -159,6 +179,58 @@ export function Lyrics({ lyrics, lyricsState, hasTrack = true, getPosition, pale
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * One line as kinetic type: staggered rows, a hero word, tucked filler words,
+ * a highlight box that wipes in, and an emoji accent. Words fly in as they
+ * are sung (driven by data-s / --p from the frame loop above).
+ */
+function Kinetic({
+  line,
+  emoji,
+  className = '',
+  lineRef,
+  wordRef,
+}: {
+  line: LyricLine;
+  emoji: boolean;
+  className?: string;
+  lineRef?: React.Ref<HTMLDivElement>;
+  wordRef?: (k: number, el: HTMLSpanElement | null) => void;
+}) {
+  const words = line.words?.length ? line.words.map((w) => w.text) : line.text.split(/s+/).filter(Boolean);
+  const layout = useMemo(() => layoutLine(words, { emoji }), [words.join(' '), emoji]); // eslint-disable-line react-hooks/exhaustive-deps
+  const done = !wordRef; // outgoing line: everything already sung
+  return (
+    <div className={`lyr-k ${className}`} ref={lineRef} style={{ '--ks': layout.scale } as React.CSSProperties} aria-label={line.text}>
+      {layout.rows.map((row, r) => (
+        <div key={r} className={`lyr-k-row lyr-k-${row.justify}`} style={{ '--shift': `${row.shift.toFixed(2)}em` } as React.CSSProperties}>
+          {row.words.map((w) => (
+            <span
+              key={w.k}
+              ref={wordRef ? (el) => wordRef(w.k, el) : undefined}
+              data-s={done ? 'past' : 'future'}
+              className={`lyr-kw lyr-kt-${w.tone}${w.box ? ' lyr-kbox' : ''}${w.tuck ? ' lyr-ktuck' : ''}`}
+              style={
+                {
+                  '--sz': w.size.toFixed(2),
+                  '--rot': `${w.rot.toFixed(1)}deg`,
+                  '--fx': w.fx.toFixed(2),
+                  '--fy': w.fy.toFixed(2),
+                  '--dy': w.dy.toFixed(2),
+                  ...(done ? { '--p': 1 } : {}),
+                } as React.CSSProperties
+              }
+            >
+              {w.text}
+              {w.emoji && <span className="lyr-kemoji">{w.emoji}</span>}
+            </span>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }
